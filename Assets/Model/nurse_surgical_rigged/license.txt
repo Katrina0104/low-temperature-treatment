@@ -1,0 +1,11 @@
+Model Information:
+* title:	Nurse Surgical Rigged
+* source:	https://sketchfab.com/3d-models/nurse-surgical-rigged-0abc982946cf445fa6c0b68a20e1514f
+* author:	bachelorgkv (https://sketchfab.com/bachelorgkv)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Nurse Surgical Rigged" (https://sketchfab.com/3d-models/nurse-surgical-rigged-0abc982946cf445fa6c0b68a20e1514f) by bachelorgkv (https://sketchfab.com/bachelorgkv) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

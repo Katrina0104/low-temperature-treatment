@@ -5,6 +5,7 @@ public class Nurse01_controller : MonoBehaviour
     public Transform pointA;
     public Transform pointB;
     public float moveSpeed = 2f;
+    public bool isTalking = false; // 外部可切換
 
     private Vector3 target;
     private Animator animator;
@@ -14,12 +15,25 @@ public class Nurse01_controller : MonoBehaviour
         target = pointB.position;
         animator = GetComponent<Animator>();
 
-        // 設定為原地踏步動畫速度
-        animator.SetFloat("speed", 1f); // 這是動畫參數，不是角色移動速度
+        animator.SetFloat("speed", 1f); // 預設原地踏步動畫
     }
 
     void Update()
     {
+        // 狀態切換
+        animator.SetBool("isTalking", isTalking);
+
+        if (isTalking)
+        {
+            // 講話時不移動
+            animator.SetFloat("speed", 0f); // 停止原地踏步動畫
+            return;
+        }
+        else
+        {
+            animator.SetFloat("speed", 1f); // 移動時播放走路動畫
+        }
+
         // 方向與距離
         Vector3 direction = (target - transform.position).normalized;
         float distance = Vector3.Distance(transform.position, target);

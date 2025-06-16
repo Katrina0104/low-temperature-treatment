@@ -16,11 +16,17 @@ public class UsageCase : MonoBehaviour
     void Start()
     {
         var audioDemoFile = Resources.Load<AudioClip>("bgm") as AudioClip;
-        if(!audioDemoFile){
+        if (!audioDemoFile)
+        {
             Debug.LogWarning("The audio file : 'bgm' is necessary for the demonstration. Please add to the Resources folder.");
         }
 
-        flowerSys = FlowerManager.Instance.CreateFlowerSystem("FlowerSample",false);
+        // 重建前先移除
+        if (FlowerManager.Instance.HasFlowerSystem("FlowerSample"))
+        {
+            FlowerManager.Instance.RemoveFlowerSystem("FlowerSample");
+        }
+        flowerSys = FlowerManager.Instance.CreateFlowerSystem("FlowerSample", false);
         flowerSys.SetupDialog();
 
         // Setup Variables.

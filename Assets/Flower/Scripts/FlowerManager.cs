@@ -43,5 +43,20 @@ namespace Flower{
             flowerSystemMap[key] = flowerSys;
             return flowerSys;
         }
+
+        public bool HasFlowerSystem(string key)
+        {
+            return flowerSystemMap.ContainsKey(key) && flowerSystemMap[key] != null;
+        }
+
+        public void RemoveFlowerSystem(string key)
+        {
+            if (flowerSystemMap.ContainsKey(key) && flowerSystemMap[key] != null)
+            {
+                GameObject obj = flowerSystemMap[key].gameObject;
+                UnityEngine.Object.Destroy(obj);
+                flowerSystemMap.Remove(key);
+            }
+        }
     }
 }

@@ -1,0 +1,6 @@
+Press "Space" to continue.[w]
+[NpcAnim,talk] Rookie, this is your first internship, right?  [lr]
+[NpcAnim,talk] Don't worry, I'll take care of you. [w]
+[NpcMove,Nurse01,2.45,0,-0.3] follow me [w]
+"Patient confirmation"  [w]
+[NpcAnim,talk] Let's observe the vital signs first, starting with breathing [w]

@@ -1,79 +1,116 @@
 using UnityEngine;
+using UnityEngine.AI;
+using Flower;
+using System.Collections.Generic;
 
+[RequireComponent(typeof(NavMeshAgent))]
 public class Nurse01_controller : MonoBehaviour
 {
-    public Transform pointA;
-    public Transform pointB;
-    public float moveSpeed = 2f;
-    public bool isTalking = false; // 外部可切換
-    public float talkInterval = 1f; // 每幾秒觸發一次
-
-    private Vector3 target;
     private Animator animator;
-    private float talkTimer = 0f;
+    private NavMeshAgent agent;
+
+    [Header("Flower 設定")]
+    public string flowerSystemName = "FlowerSample";  // FlowerSystem 名稱
+    public string talkResourceName = "NPC_nurse01";   // 對話資源名稱
+
+    void Awake()
+    {
+        animator = GetComponent<Animator>();
+        agent = GetComponent<NavMeshAgent>();
+
+        if (animator == null) Debug.LogError("找不到 Animator 元件！");
+        if (agent == null) Debug.LogError("找不到 NavMeshAgent 元件！");
+    }
 
     void Start()
     {
-        target = pointB.position;
-        animator = GetComponent<Animator>();
+        SetIdle(); // 初始 idle
 
-        animator.SetFloat("speed", 1f); // 預設原地踏步動畫
+        // 取得 FlowerSystem
+        FlowerSystem flowerSys = FlowerManager.Instance.GetFlowerSystem(flowerSystemName);
+        if (flowerSys != null)
+        {
+            flowerSys.RegisterCommand("NpcAnim", PlayAnimCommand);
+
+            flowerSys.RegisterCommand("NpcMove", (List<string> args) => {
+                if (args.Count >= 4)
+                {
+                    string npcName = args[0];
+                    float x = float.Parse(args[1]);
+                    float y = float.Parse(args[2]);
+                    float z = float.Parse(args[3]);
+
+                    GameObject npcObj = GameObject.Find(npcName);
+                    if (npcObj != null)
+                    {
+                        Nurse01_controller npc = npcObj.GetComponent<Nurse01_controller>();
+                        if (npc != null)
+                        {
+                            npc.MoveTo(new Vector3(x, y, z)); // **只移動，不觸發文字**
+                        }
+                    }
+                }
+            });
+        }
     }
 
     void Update()
     {
-        // --- 自動偵測場上 Dialog 是否存在且啟用 ---
-        GameObject dialog = GameObject.Find("DefaultDialogPrefab"); // 根據你的 prefab 名稱或 tag 調整
-        if (dialog != null && dialog.activeInHierarchy)
+        // 用 agent.velocity 控制走路動畫速度
+        if (agent.velocity.magnitude > 0.1f)
         {
-            isTalking = true;
+            animator.SetFloat("speed", agent.velocity.magnitude);
         }
         else
         {
-            isTalking = false;
-        }
-        // --- END ---
-
-        // 狀態切換
-        animator.SetBool("isTalking", isTalking);
-
-        if (isTalking)
-        {
-            // 講話時不移動
-            talkTimer += Time.deltaTime;
-            if (talkTimer >= talkInterval)
-            {
-                animator.SetTrigger("talk");
-                talkTimer = 0f;
-            }
-            animator.SetFloat("speed", 0f);
-            return;
-        }
-        else
-        {
-            animator.SetFloat("speed", 1f); // 移動時播放走路動畫
-        }
-
-        // 方向與距離
-        Vector3 direction = (target - transform.position).normalized;
-        float distance = Vector3.Distance(transform.position, target);
-
-        // 角色面向移動方向
-        if (direction != Vector3.zero)
-        {
-            // 僅旋轉 Y 軸（2D 請改用 Z 軸）
-            Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
-            transform.rotation = Quaternion.Lerp(transform.rotation, toRotation, 0.2f); // 平滑旋轉
-        }
-
-        // 實際移動角色
-        transform.position += direction * moveSpeed * Time.deltaTime;
-
-        // 到達目標時切換方向
-        if (distance < 0.1f)
-        {
-            target = (target == pointA.position) ? pointB.position : pointA.position;
-            // 不再用 localScale 翻轉
+            SetIdle();
         }
     }
+
+    private void PlayAnimCommand(List<string> args)
+    {
+        if (args.Count == 0) return;
+        PlayAnim(args[0].ToLower());
+    }
+
+    public void PlayAnim(string animTrigger)
+    {
+        if (animator != null)
+        {
+            animator.SetTrigger(animTrigger);
+            Debug.Log($"NPC 播放動畫 Trigger: {animTrigger}");
+        }
+    }
+
+    private void SetIdle()
+    {
+        animator.SetFloat("speed", 0f); // 停下來就 idle
+    }
+
+    /// <summary>
+    /// 移動 NPC 到目標點
+    /// </summary>
+    public void MoveTo(Vector3 destination)
+    {
+        if (agent != null)
+        {
+            agent.SetDestination(destination);
+            StartCoroutine(WaitUntilReach(destination));
+        }
+    }
+
+    private System.Collections.IEnumerator WaitUntilReach(Vector3 target)
+    {
+        while (Vector3.Distance(transform.position, target) > agent.stoppingDistance + 0.05f)
+        {
+            yield return null;
+        }
+
+        agent.ResetPath();
+        SetIdle(); // 到達後 idle
+    }
+
+    // 外部事件觸發動畫
+    public void OnTalkEvent() => PlayAnim("talk");
+    public void OnPickupEvent() => PlayAnim("pickup");
 }

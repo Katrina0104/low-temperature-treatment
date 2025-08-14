@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.AI;
 using Flower;
+using System.Collections;
 using System.Collections.Generic;
 
 [RequireComponent(typeof(NavMeshAgent))]
@@ -8,10 +9,10 @@ public class Nurse01_controller : MonoBehaviour
 {
     private Animator animator;
     private NavMeshAgent agent;
+    private FlowerSystem flowerSys; // 注入使用
 
-    [Header("Flower 設定")]
-    public string flowerSystemName = "FlowerSample";  // FlowerSystem 名稱
-    public string talkResourceName = "NPC_nurse01";   // 對話資源名稱
+    [Header("走路動畫設定")]
+    public float walkAnimSpeedMultiplier = 1f;
 
     void Awake()
     {
@@ -24,34 +25,7 @@ public class Nurse01_controller : MonoBehaviour
 
     void Start()
     {
-        SetIdle(); // 初始 idle
-
-        // 取得 FlowerSystem
-        FlowerSystem flowerSys = FlowerManager.Instance.GetFlowerSystem(flowerSystemName);
-        if (flowerSys != null)
-        {
-            flowerSys.RegisterCommand("NpcAnim", PlayAnimCommand);
-
-            flowerSys.RegisterCommand("NpcMove", (List<string> args) => {
-                if (args.Count >= 4)
-                {
-                    string npcName = args[0];
-                    float x = float.Parse(args[1]);
-                    float y = float.Parse(args[2]);
-                    float z = float.Parse(args[3]);
-
-                    GameObject npcObj = GameObject.Find(npcName);
-                    if (npcObj != null)
-                    {
-                        Nurse01_controller npc = npcObj.GetComponent<Nurse01_controller>();
-                        if (npc != null)
-                        {
-                            npc.MoveTo(new Vector3(x, y, z)); // **只移動，不觸發文字**
-                        }
-                    }
-                }
-            });
-        }
+        SetIdle();
     }
 
     void Update()
@@ -59,12 +33,27 @@ public class Nurse01_controller : MonoBehaviour
         // 用 agent.velocity 控制走路動畫速度
         if (agent.velocity.magnitude > 0.1f)
         {
-            animator.SetFloat("speed", agent.velocity.magnitude);
+            animator.SetFloat("speed", agent.velocity.magnitude * walkAnimSpeedMultiplier);
         }
         else
         {
             SetIdle();
         }
+    }
+
+    private void SetIdle()
+    {
+        animator.SetFloat("speed", 0f);
+    }
+
+    // 給 UsageCase 注入 FlowerSystem
+    public void SetFlowerSystem(FlowerSystem fs)
+    {
+        flowerSys = fs;
+
+        // 註冊 Flower 指令
+        flowerSys.RegisterCommand("NpcAnim", PlayAnimCommand);
+        flowerSys.RegisterCommand("NpcMove", MoveCommand);
     }
 
     private void PlayAnimCommand(List<string> args)
@@ -78,28 +67,34 @@ public class Nurse01_controller : MonoBehaviour
         if (animator != null)
         {
             animator.SetTrigger(animTrigger);
-            Debug.Log($"NPC 播放動畫 Trigger: {animTrigger}");
         }
     }
 
-    private void SetIdle()
+    private void MoveCommand(List<string> args)
     {
-        animator.SetFloat("speed", 0f); // 停下來就 idle
+        if (args.Count < 4) return;
+
+        string npcName = args[0];
+        float x = float.Parse(args[1]);
+        float y = float.Parse(args[2]);
+        float z = float.Parse(args[3]);
+
+        if (npcName != gameObject.name) return;
+
+        MoveTo(new Vector3(x, y, z));
     }
 
-    /// <summary>
-    /// 移動 NPC 到目標點
-    /// </summary>
     public void MoveTo(Vector3 destination)
     {
         if (agent != null)
         {
             agent.SetDestination(destination);
+            StopAllCoroutines();
             StartCoroutine(WaitUntilReach(destination));
         }
     }
 
-    private System.Collections.IEnumerator WaitUntilReach(Vector3 target)
+    private IEnumerator WaitUntilReach(Vector3 target)
     {
         while (Vector3.Distance(transform.position, target) > agent.stoppingDistance + 0.05f)
         {
@@ -107,10 +102,10 @@ public class Nurse01_controller : MonoBehaviour
         }
 
         agent.ResetPath();
-        SetIdle(); // 到達後 idle
+        SetIdle();
     }
 
-    // 外部事件觸發動畫
+    // 可額外外部觸發動畫
     public void OnTalkEvent() => PlayAnim("talk");
     public void OnPickupEvent() => PlayAnim("pickup");
 }

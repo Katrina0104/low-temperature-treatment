@@ -13,7 +13,6 @@ public class UsageCase : MonoBehaviour
     private bool isGameEnd = false;
     private bool isLocked = false;
 
-
     void Start()
     {
         var audioDemoFile = Resources.Load<AudioClip>("bgm") as AudioClip;
@@ -53,10 +52,10 @@ public class UsageCase : MonoBehaviour
         if(flowerSys.isCompleted && !isGameEnd && !isLocked){
             switch(progress){
                 case 0:
-                    flowerSys.ReadTextFromResource("NPC_nurse01");
+                    flowerSys.ReadTextFromResource("start");
                     break;
-                /*case 1:
-                    flowerSys.ReadTextFromResource("NPC_nurse01");
+                case 1:
+                    flowerSys.ReadTextFromResource("demo_start");
                     break;
                 case 2:
                     flowerSys.SetupButtonGroup();
@@ -89,7 +88,6 @@ public class UsageCase : MonoBehaviour
                 case 3:
                     isGameEnd=true;
                     break;
-                */
             }
             progress ++;
         }

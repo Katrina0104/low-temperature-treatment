@@ -3,15 +3,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Flower;
+using UnityEngine.XR;
 
 public class UsageCase : MonoBehaviour
 {
     FlowerSystem flowerSys;
     private string myName;
     private int progress = 0;
-    private bool pickedUpTheKey = false;
+    private bool breathingRate = false;
     private bool isGameEnd = false;
     private bool isLocked = false;
+    private bool triggerPressedLastFrame = false;
 
     void Start()
     {
@@ -27,6 +29,7 @@ public class UsageCase : MonoBehaviour
 
         flowerSys = FlowerManager.Instance.CreateFlowerSystem("FlowerSample", false);
         flowerSys.SetupDialog();
+        //flowerSys.SetupButton();
         flowerSys.SetupUIStage();
 
         // 將 Nurse01 注入 FlowerSystem
@@ -55,16 +58,65 @@ public class UsageCase : MonoBehaviour
             switch (progress)
             {
                 case 0:
-                    flowerSys.ReadTextFromResource("NPC_nurse01");
-                    progress++; // 避免重複
+                    flowerSys.ReadTextFromResource("NPC_nurse01(1)");
                     break;
-                    /* 可延伸更多進度
-                    case 1:
-                        flowerSys.ReadTextFromResource("NPC_nurse01_2");
-                        progress++;
-                        break;
+
+                case 1:
+                    flowerSys.SetupButtonGroup();
+                    flowerSys.SetupButton("Yes", () => {
+                        breathingRate = true;
+                        flowerSys.Resume();
+                        flowerSys.RemoveButtonGroup();
+                        flowerSys.ReadTextFromResource("NPC_nurse01(2)");
+                        progress = 2;
+                    });
+                    flowerSys.SetupButton("No", () => {
+                        flowerSys.Resume();
+                        flowerSys.RemoveButtonGroup();
+                        flowerSys.ReadTextFromResource("retry");
+                        progress = 1; 
+                    });
+                    break;
+
+                case 2:
+                    break;
+                    /* 
+                case 2:
+                    flowerSys.SetupButtonGroup();
+                    if(!pickedUpTheKey){
+                        flowerSys.SetupButton("Pickup the key.",()=>{
+                            pickedUpTheKey = true;
+                            flowerSys.Resume();
+                            flowerSys.RemoveButtonGroup();
+                            flowerSys.ReadTextFromResource("demo_key");
+                            progress = 2;
+                            isLocked=false;
+                        });
+                    }
+                    flowerSys.SetupButton("Open the door",()=>{
+                        if(pickedUpTheKey){
+                            flowerSys.Resume();
+                            flowerSys.RemoveButtonGroup();
+                            flowerSys.ReadTextFromResource("demo_door");
+                            isLocked=false;
+                        }else{
+                            flowerSys.Resume();
+                            flowerSys.RemoveButtonGroup();
+                            flowerSys.ReadTextFromResource("demo_locked_door");
+                            progress = 2;
+                            isLocked=false;
+                        }
+                    });
+                    isLocked=true;
+                    break;
+                case 3:
+                    isGameEnd=true;
+                    break;
+            }
+            progress ++;
                     */
             }
+            progress++;
         }
 
         if (!isGameEnd)
@@ -76,6 +128,23 @@ public class UsageCase : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.R))
             {
                 flowerSys.Resume(); // 繼續
+            }
+
+            // VR 控制器
+            InputDevice rightHand = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+            if (!rightHand.isValid)
+            {
+                Debug.Log("Right hand controller not detected.");
+                return;
+            }
+            bool triggerPressed;
+            if (rightHand.TryGetFeatureValue(CommonUsages.triggerButton, out triggerPressed))
+            {
+                if (triggerPressed && !triggerPressedLastFrame)
+                {
+                    flowerSys.Next(); // 只在按下瞬間觸發
+                }
+                triggerPressedLastFrame = triggerPressed;
             }
         }
     }

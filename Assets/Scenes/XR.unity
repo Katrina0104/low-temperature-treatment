@@ -16494,7 +16494,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5614108858757309567, guid: d3fa21445a022db4f9de1c4ce789f6b1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1100393359}
   m_SourcePrefab: {fileID: 100100000, guid: d3fa21445a022db4f9de1c4ce789f6b1, type: 3}
 --- !u!1 &607554828 stripped
 GameObject:
@@ -17810,6 +17813,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2ce88dc19db494d4f9b8a15334992338, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  rightTriggerAction: {fileID: 0}
 --- !u!1 &638206807 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3943638999091190294, guid: b90915b957ee60c459ccbc2b494b3c4e, type: 3}
@@ -29986,6 +29990,27 @@ MonoBehaviour:
   m_StartingMultipleGrabTransformers: []
   m_AddDefaultGrabTransformers: 1
   m_FarAttachMode: 0
+--- !u!1 &1100393357 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5614108858757309567, guid: d3fa21445a022db4f9de1c4ce789f6b1, type: 3}
+  m_PrefabInstance: {fileID: 607360314}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1100393359
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1100393357}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 991c69b8a1b6a444a9177914f77cf7d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_TintColor: {r: 0.9811321, g: 0.9811321, b: 0.9811321, a: 0.42352942}
+  m_TintOnHover: 1
+  m_TintOnSelection: 1
+  m_TintRenderers: []
 --- !u!1 &1100607621 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 4409016756054209230, guid: 59013c0521297f940977bd33cc3bfe97, type: 3}

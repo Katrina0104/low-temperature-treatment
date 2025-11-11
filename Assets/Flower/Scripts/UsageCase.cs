@@ -12,7 +12,6 @@ public class UsageCase : MonoBehaviour
     FlowerSystem flowerSys;
     private string myName;
     private int progress = 0;
-    private bool breathingRate = false;
     private bool isGameEnd = false;
     private bool isLocked = false;
 
@@ -108,7 +107,6 @@ public class UsageCase : MonoBehaviour
                     canAcceptVRInput = false;
                     flowerSys.SetupButtonGroup();
                     flowerSys.SetupButton("Yes", () => {
-                        breathingRate = true;
                         flowerSys.Resume();
                         flowerSys.RemoveButtonGroup();
                         flowerSys.ReadTextFromResource("NPC_nurse01(2)");
@@ -125,6 +123,23 @@ public class UsageCase : MonoBehaviour
                     break;
 
                 case 2:
+                    // 當顯示按鈕時，暫時禁用VR輸入
+                    canAcceptVRInput = false;
+                    flowerSys.SetupButtonGroup();
+                    flowerSys.SetupButton("Yes", () => {
+                        flowerSys.Resume();
+                        flowerSys.RemoveButtonGroup();
+                        flowerSys.ReadTextFromResource("NPC_nurse01(3)");
+                        progress = 2;
+                        canAcceptVRInput = true; // 重新啟用VR輸入
+                    });
+                    flowerSys.SetupButton("No", () => {
+                        flowerSys.Resume();
+                        flowerSys.RemoveButtonGroup();
+                        flowerSys.ReadTextFromResource("retry");
+                        progress = 1;
+                        canAcceptVRInput = true; // 重新啟用VR輸入
+                    });
                     break;
             }
             progress++;

@@ -4,3 +4,6 @@ Press "Space" to continue.[w]
 [NpcMove,Nurse01,2.45,0,-0.3] follow me [w]
 "Patient confirmation"  [w]
 [NpcAnim,talk] Let's observe the vital signs first, starting with breathing [w]
+" Brearthing Rate : 15 BPM " [w]
+[NpcAnim,talk] Is it ordinary ? [w]
+

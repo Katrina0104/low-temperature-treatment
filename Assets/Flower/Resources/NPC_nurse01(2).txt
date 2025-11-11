@@ -1,0 +1,3 @@
+[NpcAnim,talk] Now let's check the heart rate [lr]
+" Heart Rate : 70BPM " [w]
+[NpcAnim,talk] Is it ordinary ? [w]

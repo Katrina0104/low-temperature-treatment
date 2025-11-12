@@ -20404,7 +20404,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2ce88dc19db494d4f9b8a15334992338, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rightTriggerAction: {fileID: 0}
+  rightTriggerAction: {fileID: 83097790271614945, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  buttonAAction: {fileID: 6896692076208900394, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  buttonBAction: {fileID: -2732913963025928778, guid: c348712bda248c246b8c49b3db54643f, type: 3}
 --- !u!1 &638206807 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3943638999091190294, guid: b90915b957ee60c459ccbc2b494b3c4e, type: 3}
@@ -58554,6 +58556,10 @@ PrefabInstance:
       propertyPath: m_Text
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 4476899073058213090, guid: e433459d0183aea4fad3f50cc831ec76, type: 3}
+      propertyPath: m_FontData.m_Font
+      value: 
+      objectReference: {fileID: 12800000, guid: 9e0a8626a509ab942a880f75504357ee, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

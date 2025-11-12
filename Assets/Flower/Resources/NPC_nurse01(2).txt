@@ -1,3 +1,5 @@
-[NpcAnim,talk] Now let's check the heart rate [lr]
-" Heart Rate : 70BPM " [w]
-[NpcAnim,talk] Is it ordinary ? [w]
+[NpcAnim,talk] 現在我們來檢查一下心率 [lr]
+
+「心率：70BPM」 [w]
+
+[NpcAnim,talk] 這樣正常嗎？ [w]

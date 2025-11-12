@@ -17,9 +17,11 @@ public class UsageCase : MonoBehaviour
 
     // VR devices
     [SerializeField] InputActionReference rightTriggerAction;
+    [SerializeField] InputActionReference buttonAAction; // A 按鈕
+    [SerializeField] InputActionReference buttonBAction; // B 按鈕
     bool triggerPressedLastFrame;
     bool rightTriggerEnabled = false;
-    private bool canAcceptVRInput = true; // 新增：控制是否接受VR輸入
+    private bool canAcceptVRInput = true;
     private bool triggerPressed = false;
 
     void Start()
@@ -70,6 +72,18 @@ public class UsageCase : MonoBehaviour
         {
             Debug.LogWarning("RightTrigger Action Reference is null on Enable!");
         }
+
+        if (buttonAAction?.action != null)
+        {
+            buttonAAction.action.Enable();
+            Debug.Log("Button A Action Enabled");
+        }
+
+        if (buttonBAction?.action != null)
+        {
+            buttonBAction.action.Enable();
+            Debug.Log("Button B Action Enabled");
+        }
     }
 
     void OnDisable()
@@ -79,13 +93,36 @@ public class UsageCase : MonoBehaviour
             rightTriggerAction.action.Disable();
             Debug.Log("RightTrigger Action Disabled");
         }
+
+        if (buttonAAction?.action != null)
+        {
+            buttonAAction.action.Disable();
+            Debug.Log("Button A Action Disabled");
+        }
+
+        if (buttonBAction?.action != null)
+        {
+            buttonBAction.action.Disable();
+            Debug.Log("Button B Action Disabled");
+        }
     }
+
     void OnDestroy()
     {
         if (rightTriggerAction?.action != null)
         {
             rightTriggerAction.action.started -= OnRightTriggerStarted;
             rightTriggerAction.action.canceled -= OnRightTriggerCanceled;
+        }
+
+        if (buttonAAction?.action != null)
+        {
+            buttonAAction.action.started -= OnButtonAStarted;
+        }
+
+        if (buttonBAction?.action != null)
+        {
+            buttonBAction.action.started -= OnButtonBStarted;
         }
     }
 
@@ -103,43 +140,15 @@ public class UsageCase : MonoBehaviour
                     break;
 
                 case 1:
-                    // 當顯示按鈕時，暫時禁用VR輸入
-                    canAcceptVRInput = false;
-                    flowerSys.SetupButtonGroup();
-                    flowerSys.SetupButton("Yes", () => {
-                        flowerSys.Resume();
-                        flowerSys.RemoveButtonGroup();
-                        flowerSys.ReadTextFromResource("NPC_nurse01(2)");
-                        progress = 2;
-                        canAcceptVRInput = true; // 重新啟用VR輸入
-                    });
-                    flowerSys.SetupButton("No", () => {
-                        flowerSys.Resume();
-                        flowerSys.RemoveButtonGroup();
-                        flowerSys.ReadTextFromResource("retry");
-                        progress = 1;
-                        canAcceptVRInput = true; // 重新啟用VR輸入
-                    });
+                    SetupYesNoButtons("NPC_nurse01(2)", "retry", 2);
                     break;
 
                 case 2:
-                    // 當顯示按鈕時，暫時禁用VR輸入
-                    canAcceptVRInput = false;
-                    flowerSys.SetupButtonGroup();
-                    flowerSys.SetupButton("Yes", () => {
-                        flowerSys.Resume();
-                        flowerSys.RemoveButtonGroup();
-                        flowerSys.ReadTextFromResource("NPC_nurse01(3)");
-                        progress = 2;
-                        canAcceptVRInput = true; // 重新啟用VR輸入
-                    });
-                    flowerSys.SetupButton("No", () => {
-                        flowerSys.Resume();
-                        flowerSys.RemoveButtonGroup();
-                        flowerSys.ReadTextFromResource("retry");
-                        progress = 1;
-                        canAcceptVRInput = true; // 重新啟用VR輸入
-                    });
+                    SetupYesNoButtons("NPC_nurse01(3)", "retry", 3);
+                    break;
+
+                case 3:
+                    SetupYesNoButtons("NPC_nurse01(4)", "retry", 4);
                     break;
             }
             progress++;
@@ -152,6 +161,26 @@ public class UsageCase : MonoBehaviour
                 flowerSys.Resume();
             }
         }
+    }
+    void SetupYesNoButtons(string yesResource, string noResource, int nextProgress)
+    {
+        canAcceptVRInput = true;
+        flowerSys.SetupButtonGroup();
+
+        flowerSys.SetupButton("Yes", () =>
+        {
+            flowerSys.Resume();
+            flowerSys.RemoveButtonGroup();
+            flowerSys.ReadTextFromResource(yesResource);
+            progress = nextProgress;
+        });
+
+        flowerSys.SetupButton("No", () =>
+        {
+            flowerSys.Resume();
+            flowerSys.RemoveButtonGroup();
+            flowerSys.ReadTextFromResource(noResource);
+        });
     }
     private void CustomizedFunction(List<string> _params)
     {
@@ -182,6 +211,8 @@ public class UsageCase : MonoBehaviour
             Debug.LogError($"Effect - CustomizedRotation @ [{key}] failed.");
         }
     }
+
+// VR
     void SetupVRInput()
     {
         if (rightTriggerAction?.action != null)
@@ -190,7 +221,20 @@ public class UsageCase : MonoBehaviour
             rightTriggerAction.action.canceled += OnRightTriggerCanceled;
             rightTriggerAction.action.Enable();
         }
+
+        if (buttonAAction?.action != null)
+        {
+            buttonAAction.action.started += OnButtonAStarted;
+            buttonAAction.action.Enable();
+        }
+
+        if (buttonBAction?.action != null)
+        {
+            buttonBAction.action.started += OnButtonBStarted;
+            buttonBAction.action.Enable();
+        }
     }
+
     private void OnRightTriggerStarted(InputAction.CallbackContext context)
     {
         if (!canAcceptVRInput || flowerSys == null || isGameEnd || isLocked) return;
@@ -212,6 +256,99 @@ public class UsageCase : MonoBehaviour
         if (flowerSys != null && canAcceptVRInput && !isGameEnd && !isLocked)
         {
             flowerSys.Next();
+        }
+    }
+    private void OnButtonAStarted(InputAction.CallbackContext context)
+    {
+        if (!canAcceptVRInput || flowerSys == null || isGameEnd || isLocked) return;
+
+        // A 按鈕對應 No
+        if (progress >= 2 && progress <= 5) // 在需要選擇的進度範圍內
+        {
+            HandleButtonA();
+        }
+    }
+
+    private void OnButtonBStarted(InputAction.CallbackContext context)
+    {
+        if (!canAcceptVRInput || flowerSys == null || isGameEnd || isLocked) return;
+
+        // B 按鈕對應 Yes
+        if (progress >= 2 && progress <= 5) // 在需要選擇的進度範圍內
+        {
+            HandleButtonB();
+        }
+    }
+
+    private void HandleButtonA()
+    {
+        // A 按鈕對應 No
+        switch (progress - 1)
+        {
+            case 1:
+                flowerSys.Resume();
+                flowerSys.RemoveButtonGroup();
+                flowerSys.ReadTextFromResource("retry");
+                progress = 1;
+                canAcceptVRInput = true;
+                break;
+            case 2:
+                flowerSys.Resume();
+                flowerSys.RemoveButtonGroup();
+                flowerSys.ReadTextFromResource("retry");
+                progress = 1;
+                canAcceptVRInput = true;
+                break;
+            case 3:
+                flowerSys.Resume();
+                flowerSys.RemoveButtonGroup();
+                flowerSys.ReadTextFromResource("retry");
+                progress = 1;
+                canAcceptVRInput = true;
+                break;
+            case 4:
+                flowerSys.Resume();
+                flowerSys.RemoveButtonGroup();
+                flowerSys.ReadTextFromResource("retry");
+                progress = 1;
+                canAcceptVRInput = true;
+                break;
+        }
+    }
+
+    private void HandleButtonB()
+    {
+        // B 按鈕對應 Yes
+        switch (progress - 1)
+        {
+            case 1:
+                flowerSys.Resume();
+                flowerSys.RemoveButtonGroup();
+                flowerSys.ReadTextFromResource("NPC_nurse01(2)");
+                progress = 2;
+                canAcceptVRInput = true;
+                break;
+            case 2:
+                flowerSys.Resume();
+                flowerSys.RemoveButtonGroup();
+                flowerSys.ReadTextFromResource("NPC_nurse01(3)");
+                progress = 3;
+                canAcceptVRInput = true;
+                break;
+            case 3:
+                flowerSys.Resume();
+                flowerSys.RemoveButtonGroup();
+                flowerSys.ReadTextFromResource("NPC_nurse01(4)");
+                progress = 4;
+                canAcceptVRInput = true;
+                break;
+            case 4:
+                flowerSys.Resume();
+                flowerSys.RemoveButtonGroup();
+                flowerSys.ReadTextFromResource("NPC_nurse01(5)");
+                progress = 5;
+                canAcceptVRInput = true;
+                break;
         }
     }
 }

@@ -1,33 +1,11 @@
- Let's confirm the vital signs. 
-Blood pressure is 138/88 mmHg, 
-blood oxygen saturation is 96%, 
-blood sugar is 102 mg/dL, and 
-blood lipids show a total cholesterol of 188 mg/dL.
+[NpcAnim,talk] 讓我們確認生命徵象。 [w]
 
+“血壓 138/88 mmHg” [lr]
 
- Next, let's confirm the Glasgow Coma Scale score. 
-The patient is alert and oriented, with a score of 15.
+“血氧飽和度 96%” [lr]
 
- Now, let's check the metabolic panel. 
-Electrolytes are within normal range, and renal function shows a creatinine level of 1.1 mg/dL.
+“血糖 102 mg/dL” [lr]
 
-All parameters are within expected ranges for an elderly patient. We can now begin the therapy, starting with the preparatory work.
+「血脂顯示總膽固醇 188 mg/dL」 [w]
 
- Let's begin by attaching the temperature probe. 
-We need core body temperature.
-(We can connect the probe to the esophagus, bladder, or rectum. Which site will you choose?
-
-notice:
-If the esophagus is accessed:
-Please advance the probe to the mid to lower third of the esophagus. This position provides an accurate core temperature reading.
-
-If the bladder is accessed:
-Insert the probe using the same sterile technique as for a standard Foley catheter.
-
-If the rectum is accessed:
-For this adult patient, please insert the probe at least 6.5 cm to ensure an accurate reading.)
-
-The patient's current tympanic temperature is 36.8°C. 
-
-
-Now, let's place the nasogastric tube. Measure the length from the nose tip to the earlobe and then down to the xiphoid process. Mark the length before insertion to ensure correct placement.
+[NpcAnim,talk] 這樣正常嗎？ [w]

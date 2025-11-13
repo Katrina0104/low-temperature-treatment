@@ -20,9 +20,7 @@ public class UsageCase : MonoBehaviour
     [SerializeField] InputActionReference buttonAAction; // A 按鈕
     [SerializeField] InputActionReference buttonBAction; // B 按鈕
     bool triggerPressedLastFrame;
-    bool rightTriggerEnabled = false;
     private bool canAcceptVRInput = true;
-    private bool triggerPressed = false;
 
     void Start()
     {
@@ -65,7 +63,6 @@ public class UsageCase : MonoBehaviour
         if (rightTriggerAction?.action != null)
         {
             rightTriggerAction.action.Enable();
-            rightTriggerEnabled = true;
             Debug.Log("RightTrigger Action Enabled");
         }
         else
@@ -112,7 +109,6 @@ public class UsageCase : MonoBehaviour
         if (rightTriggerAction?.action != null)
         {
             rightTriggerAction.action.started -= OnRightTriggerStarted;
-            rightTriggerAction.action.canceled -= OnRightTriggerCanceled;
         }
 
         if (buttonAAction?.action != null)
@@ -156,6 +152,11 @@ public class UsageCase : MonoBehaviour
 
         if (!isGameEnd)
         {
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                // Continue the messages, stoping by [w] or [lr] keywords.
+                flowerSys.Next();
+            }
             if (Input.GetKeyDown(KeyCode.R))
             {
                 flowerSys.Resume();
@@ -182,6 +183,8 @@ public class UsageCase : MonoBehaviour
             flowerSys.ReadTextFromResource(noResource);
         });
     }
+
+// nurse animation when talk
     private void CustomizedFunction(List<string> _params)
     {
         var resultValue = int.Parse(_params[0]) + int.Parse(_params[1]);
@@ -218,7 +221,6 @@ public class UsageCase : MonoBehaviour
         if (rightTriggerAction?.action != null)
         {
             rightTriggerAction.action.started += OnRightTriggerStarted;
-            rightTriggerAction.action.canceled += OnRightTriggerCanceled;
             rightTriggerAction.action.Enable();
         }
 
@@ -241,14 +243,9 @@ public class UsageCase : MonoBehaviour
 
         if (context.ReadValue<float>() > 0.1f)
         {
-            triggerPressed = true;
+
             HandleVRTriggerPress();
         }
-    }
-
-    private void OnRightTriggerCanceled(InputAction.CallbackContext context)
-    {
-        triggerPressed = false;
     }
 
     private void HandleVRTriggerPress()

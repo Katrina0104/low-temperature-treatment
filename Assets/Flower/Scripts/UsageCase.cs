@@ -24,11 +24,11 @@ public class UsageCase : MonoBehaviour
 
     void Start()
     {
-        var audioDemoFile = Resources.Load<AudioClip>("bgm") as AudioClip;
+        /*var audioDemoFile = Resources.Load<AudioClip>("bgm") as AudioClip;
         if (!audioDemoFile)
         {
             Debug.LogWarning("The audio file : 'bgm' is necessary for the demonstration. Please add to the Resources folder.");
-        }
+        }*/
 
         // 建立 FlowerSystem
         if (FlowerManager.Instance.HasFlowerSystem("FlowerSample"))

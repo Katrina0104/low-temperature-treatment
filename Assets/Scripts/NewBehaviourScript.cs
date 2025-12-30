@@ -25,8 +25,8 @@ public class ReplaceActivateGroup : MonoBehaviour
     [Tooltip("若為 true，會啟用指定物件以及其所有子物件（遞迴）")]
     public bool activateRecursively = true;
 
-    [Tooltip("是否把此 (B) 的 Rigidbody 速度複製給所有啟用後的 Rigidbody（若有）")]
-    public bool copyVelocityToActivated = true;
+    //[Tooltip("是否把此 (B) 的 Rigidbody 速度複製給所有啟用後的 Rigidbody（若有）")]
+    //public bool copyVelocityToActivated = true;
 
     [Tooltip("使用 trigger 模式 (OnTriggerEnter)")]
     public bool useTrigger = false;
@@ -223,7 +223,7 @@ public class ReplaceActivateGroup : MonoBehaviour
         }
 
         // If requested, copy parent velocity to children (for non-kinematic rbs)
-        if (copyVelocityToActivated && parentRb != null)
+        /*if (copyVelocityToActivated && parentRb != null)
         {
             foreach (var root in roots)
             {
@@ -240,7 +240,7 @@ public class ReplaceActivateGroup : MonoBehaviour
                     }
                 }
             }
-        }
+        }*/
 
         // Re-enable parent-child collisions if we set ignore before
         if (ignoreParentCollisionDuringActivate && parentCollider != null)

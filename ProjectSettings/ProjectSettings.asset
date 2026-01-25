@@ -908,8 +908,8 @@ PlayerSettings:
   apiCompatibilityLevelPerPlatform: {}
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: low temperature treatment
-  metroPackageVersion: 
+  metroPackageName: lowtemperaturetreatment
+  metroPackageVersion: 1.0.0.0
   metroCertificatePath: 
   metroCertificatePassword: 
   metroCertificateSubject: 
@@ -917,7 +917,7 @@ PlayerSettings:
   metroCertificateNotAfter: 0000000000000000
   metroApplicationDescription: low temperature treatment
   wsaImages: {}
-  metroTileShortName: 
+  metroTileShortName: low temperature treatment
   metroTileShowName: 0
   metroMediumTileShowName: 0
   metroLargeTileShowName: 0

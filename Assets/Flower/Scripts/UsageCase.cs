@@ -132,7 +132,7 @@ public class UsageCase : MonoBehaviour
             switch (progress)
             {
                 case 0:
-                    flowerSys.ReadTextFromResource("NPC_nurse01(1)");
+                    flowerSys.ReadTextFromResource("start");
                     break;
 
                 case 1:

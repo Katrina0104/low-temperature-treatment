@@ -1,351 +1,147 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using Flower;
-using UnityEngine.XR;
+using TMPro;
+using System.Collections.Generic;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.XR;
 
-public class UsageCase : MonoBehaviour
+public class VRDialogueSystem : MonoBehaviour
 {
-    FlowerSystem flowerSys;
-    private string myName;
-    private int progress = 0;
-    private bool isGameEnd = false;
-    private bool isLocked = false;
+    [Header("UI 引用")]
+    public GameObject dialoguePlane;       // 原 panelObject
+    public TextMeshProUGUI dialogueContent; // 原 contentText
 
-    // VR devices
-    [SerializeField] InputActionReference rightTriggerAction;
-    [SerializeField] InputActionReference buttonAAction; // A 按鈕
-    [SerializeField] InputActionReference buttonBAction; // B 按鈕
-    bool triggerPressedLastFrame;
-    private bool canAcceptVRInput = true;
+    [Header("NPC 動畫")]
+    public Animator npcAnimator;
 
-    void Start()
+    [Header("配置")]
+    public TextAsset dialogueFile;
+
+    [Header("VR 控制設定")]
+    public InputActionProperty leftTriggerAction;
+    public InputActionProperty rightTriggerAction;
+
+    private List<string> lines = new List<string>();
+    private int currentIndex = 0;
+
+    private void Awake()
     {
-        /*var audioDemoFile = Resources.Load<AudioClip>("bgm") as AudioClip;
-        if (!audioDemoFile)
-        {
-            Debug.LogWarning("The audio file : 'bgm' is necessary for the demonstration. Please add to the Resources folder.");
-        }*/
+        LoadDialogue();
+    }
 
-        // 建立 FlowerSystem
-        if (FlowerManager.Instance.HasFlowerSystem("FlowerSample"))
-            FlowerManager.Instance.RemoveFlowerSystem("FlowerSample");
+    private void Start()
+    {
+        // 確保初始狀態
+        if (dialoguePlane != null) dialoguePlane.SetActive(true);
+        ShowLine();
+    }
 
-        flowerSys = FlowerManager.Instance.CreateFlowerSystem("FlowerSample", false);
-        flowerSys.SetupDialog();
-        //flowerSys.SetupButton();
-        flowerSys.SetupUIStage();
-
-        // 將 Nurse01 注入 FlowerSystem
-        Nurse01_controller nurse = GameObject.Find("Nurse01")?.GetComponent<Nurse01_controller>();
-        if (nurse != null)
-        {
-            nurse.SetFlowerSystem(flowerSys);
-        }
-
-        // Setup 變數
-        myName = "Rempty (｢･ω･)｢";
-        flowerSys.SetVariable("MyName", myName);
-
-        // 註冊自訂指令和特效
-        flowerSys.RegisterCommand("UsageCase", CustomizedFunction);
-        flowerSys.RegisterEffect("customizedRotation", EffectCustomizedRotation);
-
-        // VR
+    private void OnEnable()
+    {
         SetupVRInput();
     }
 
-    void OnEnable()
+    private void OnDisable()
     {
-        if (rightTriggerAction?.action != null)
-        {
-            rightTriggerAction.action.Enable();
-            Debug.Log("RightTrigger Action Enabled");
-        }
-        else
-        {
-            Debug.LogWarning("RightTrigger Action Reference is null on Enable!");
-        }
+        // 解除訂閱，避免切換場景時報錯
+        if (leftTriggerAction.action != null)
+            leftTriggerAction.action.started -= OnLeftTriggerStarted;
 
-        if (buttonAAction?.action != null)
-        {
-            buttonAAction.action.Enable();
-            Debug.Log("Button A Action Enabled");
-        }
-
-        if (buttonBAction?.action != null)
-        {
-            buttonBAction.action.Enable();
-            Debug.Log("Button B Action Enabled");
-        }
-    }
-
-    void OnDisable()
-    {
-        if (rightTriggerAction?.action != null)
-        {
-            rightTriggerAction.action.Disable();
-            Debug.Log("RightTrigger Action Disabled");
-        }
-
-        if (buttonAAction?.action != null)
-        {
-            buttonAAction.action.Disable();
-            Debug.Log("Button A Action Disabled");
-        }
-
-        if (buttonBAction?.action != null)
-        {
-            buttonBAction.action.Disable();
-            Debug.Log("Button B Action Disabled");
-        }
-    }
-
-    void OnDestroy()
-    {
-        if (rightTriggerAction?.action != null)
-        {
+        if (rightTriggerAction.action != null)
             rightTriggerAction.action.started -= OnRightTriggerStarted;
-        }
-
-        if (buttonAAction?.action != null)
-        {
-            buttonAAction.action.started -= OnButtonAStarted;
-        }
-
-        if (buttonBAction?.action != null)
-        {
-            buttonBAction.action.started -= OnButtonBStarted;
-        }
     }
 
-    void Update()
-    {
-        if (flowerSys == null) return;
-
-        // 進度控制訊息播放
-        if (flowerSys.isCompleted && !isGameEnd && !isLocked)
-        {
-            switch (progress)
-            {
-                case 0:
-                    flowerSys.ReadTextFromResource("start");
-                    break;
-
-                case 1:
-                    SetupYesNoButtons("NPC_nurse01(2)", "retry", 2);
-                    break;
-
-                case 2:
-                    SetupYesNoButtons("NPC_nurse01(3)", "retry", 3);
-                    break;
-
-                case 3:
-                    SetupYesNoButtons("NPC_nurse01(4)", "retry", 4);
-                    break;
-            }
-            progress++;
-        }
-
-        if (!isGameEnd)
-        {
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                // Continue the messages, stoping by [w] or [lr] keywords.
-                flowerSys.Next();
-            }
-            if (Input.GetKeyDown(KeyCode.R))
-            {
-                flowerSys.Resume();
-            }
-        }
-    }
-    void SetupYesNoButtons(string yesResource, string noResource, int nextProgress)
-    {
-        canAcceptVRInput = true;
-        flowerSys.SetupButtonGroup();
-
-        flowerSys.SetupButton("Yes", () =>
-        {
-            flowerSys.Resume();
-            flowerSys.RemoveButtonGroup();
-            flowerSys.ReadTextFromResource(yesResource);
-            progress = nextProgress;
-        });
-
-        flowerSys.SetupButton("No", () =>
-        {
-            flowerSys.Resume();
-            flowerSys.RemoveButtonGroup();
-            flowerSys.ReadTextFromResource(noResource);
-        });
-    }
-
-// nurse animation when talk
-    private void CustomizedFunction(List<string> _params)
-    {
-        var resultValue = int.Parse(_params[0]) + int.Parse(_params[1]);
-        Debug.Log($"Hi! This is called by CustomizedFunction with the result of parameters : {resultValue}");
-    }
-
-    IEnumerator CustomizedRotationTask(string key, GameObject obj, float endTime)
-    {
-        Vector3 startRotation = obj.transform.eulerAngles;
-        Vector3 endRotation = obj.transform.eulerAngles + new Vector3(0, 180, 0);
-        yield return flowerSys.EffectTimerTask(key, endTime, (percent) =>
-        {
-            obj.transform.eulerAngles = Vector3.Lerp(startRotation, endRotation, percent);
-        });
-    }
-
-    private void EffectCustomizedRotation(string key, List<string> _params)
-    {
-        try
-        {
-            float endTime = float.Parse(_params[0]) / 1000f;
-            GameObject sceneObj = flowerSys.GetSceneObject(key);
-            StartCoroutine(CustomizedRotationTask($"CustomizedRotation-{key}", sceneObj, endTime));
-        }
-        catch (Exception)
-        {
-            Debug.LogError($"Effect - CustomizedRotation @ [{key}] failed.");
-        }
-    }
-
-// VR
+    // 使用你要求的 Setup 方式
     void SetupVRInput()
     {
-        if (rightTriggerAction?.action != null)
+        if (leftTriggerAction.action != null)
+        {
+            leftTriggerAction.action.started += OnLeftTriggerStarted;
+            leftTriggerAction.action.Enable();
+        }
+
+        if (rightTriggerAction.action != null)
         {
             rightTriggerAction.action.started += OnRightTriggerStarted;
             rightTriggerAction.action.Enable();
         }
+    }
 
-        if (buttonAAction?.action != null)
-        {
-            buttonAAction.action.started += OnButtonAStarted;
-            buttonAAction.action.Enable();
-        }
-
-        if (buttonBAction?.action != null)
-        {
-            buttonBAction.action.started += OnButtonBStarted;
-            buttonBAction.action.Enable();
-        }
+    private void OnLeftTriggerStarted(InputAction.CallbackContext context)
+    {
+        HandleTriggerInput();
     }
 
     private void OnRightTriggerStarted(InputAction.CallbackContext context)
     {
-        if (!canAcceptVRInput || flowerSys == null || isGameEnd || isLocked) return;
+        HandleTriggerInput();
+    }
 
-        if (context.ReadValue<float>() > 0.1f)
+    void HandleTriggerInput()
+    {
+        // 只有在對話面板顯示時，按下 Trigger 才有反應
+        if (dialoguePlane != null && dialoguePlane.activeSelf)
         {
-
-            HandleVRTriggerPress();
+            OnNextStep();
         }
     }
 
-    private void HandleVRTriggerPress()
+    void LoadDialogue()
     {
-        if (flowerSys != null && canAcceptVRInput && !isGameEnd && !isLocked)
+        if (dialogueFile != null)
         {
-            flowerSys.Next();
+            lines.Clear();
+            // 讀取 txt 並分割行
+            string[] splitLines = dialogueFile.text.Split(new[] { '\n', '\r' }, System.StringSplitOptions.RemoveEmptyEntries);
+            lines.AddRange(splitLines);
         }
-    }
-    private void OnButtonAStarted(InputAction.CallbackContext context)
-    {
-        if (!canAcceptVRInput || flowerSys == null || isGameEnd || isLocked) return;
-
-        // A 按鈕對應 No
-        if (progress >= 2 && progress <= 5) // 在需要選擇的進度範圍內
+        else
         {
-            HandleButtonA();
+            Debug.LogError("找不到對話 txt 檔！請檢查 Inspector 中的 dialogueFile 欄位。");
         }
     }
 
-    private void OnButtonBStarted(InputAction.CallbackContext context)
+    public void OnNextStep()
     {
-        if (!canAcceptVRInput || flowerSys == null || isGameEnd || isLocked) return;
-
-        // B 按鈕對應 Yes
-        if (progress >= 2 && progress <= 5) // 在需要選擇的進度範圍內
+        currentIndex++;
+        if (currentIndex < lines.Count)
         {
-            HandleButtonB();
+            ShowLine();
+        }
+        else
+        {
+            EndDialogue();
         }
     }
 
-    private void HandleButtonA()
+    void ShowLine()
     {
-        // A 按鈕對應 No
-        switch (progress - 1)
+        if (lines.Count > 0 && currentIndex < lines.Count)
         {
-            case 1:
-                flowerSys.Resume();
-                flowerSys.RemoveButtonGroup();
-                flowerSys.ReadTextFromResource("retry");
-                progress = 1;
-                canAcceptVRInput = true;
-                break;
-            case 2:
-                flowerSys.Resume();
-                flowerSys.RemoveButtonGroup();
-                flowerSys.ReadTextFromResource("retry");
-                progress = 1;
-                canAcceptVRInput = true;
-                break;
-            case 3:
-                flowerSys.Resume();
-                flowerSys.RemoveButtonGroup();
-                flowerSys.ReadTextFromResource("retry");
-                progress = 1;
-                canAcceptVRInput = true;
-                break;
-            case 4:
-                flowerSys.Resume();
-                flowerSys.RemoveButtonGroup();
-                flowerSys.ReadTextFromResource("retry");
-                progress = 1;
-                canAcceptVRInput = true;
-                break;
+            string rawLine = lines[currentIndex].Trim();
+
+            // 解析標籤，例如 [Wave]你好
+            if (rawLine.StartsWith("[") && rawLine.Contains("]"))
+            {
+                int tagEnd = rawLine.IndexOf(']');
+                string actionTag = rawLine.Substring(1, tagEnd - 1);
+                string textToShow = rawLine.Substring(tagEnd + 1);
+
+                if (npcAnimator != null)
+                {
+                    npcAnimator.SetTrigger(actionTag);
+                }
+                dialogueContent.text = textToShow;
+            }
+            else
+            {
+                dialogueContent.text = rawLine;
+            }
         }
     }
 
-    private void HandleButtonB()
+    void EndDialogue()
     {
-        // B 按鈕對應 Yes
-        switch (progress - 1)
-        {
-            case 1:
-                flowerSys.Resume();
-                flowerSys.RemoveButtonGroup();
-                flowerSys.ReadTextFromResource("NPC_nurse01(2)");
-                progress = 2;
-                canAcceptVRInput = true;
-                break;
-            case 2:
-                flowerSys.Resume();
-                flowerSys.RemoveButtonGroup();
-                flowerSys.ReadTextFromResource("NPC_nurse01(3)");
-                progress = 3;
-                canAcceptVRInput = true;
-                break;
-            case 3:
-                flowerSys.Resume();
-                flowerSys.RemoveButtonGroup();
-                flowerSys.ReadTextFromResource("NPC_nurse01(4)");
-                progress = 4;
-                canAcceptVRInput = true;
-                break;
-            case 4:
-                flowerSys.Resume();
-                flowerSys.RemoveButtonGroup();
-                flowerSys.ReadTextFromResource("NPC_nurse01(5)");
-                progress = 5;
-                canAcceptVRInput = true;
-                break;
-        }
+        if (dialoguePlane != null) dialoguePlane.SetActive(false);
+        // 重置索引，以便下次對話可以從頭開始
+        currentIndex = 0;
     }
 }

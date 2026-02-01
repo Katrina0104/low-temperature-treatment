@@ -2,61 +2,54 @@ using UnityEngine;
 using TMPro;
 using System.Collections.Generic;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
+using System.Collections;
 
 public class VRDialogueController : MonoBehaviour
 {
     [Header("UI 引用")]
-    public GameObject dialoguePlane;
-    public TextMeshProUGUI dialogueContent;
+    public GameObject dialoguePlane;       // 對話背景板
+    public TextMeshProUGUI dialogueContent; // 對話文字
+    public Button yesButton;
+    public Button noButton;
 
-    [Header("互動按鈕 (初始設為非啟動)")]
-    public GameObject yesButton;
-    public GameObject noButton;
-
-    [Header("NPC 動畫")]
+    [Header("NPC 設定")]
     public Animator npcAnimator;
+    public float moveSpeed = 2.0f;
+    public float rotationSpeed = 5.0f;
 
     [Header("配置")]
     public TextAsset dialogueFile;
-
-    [Header("VR 控制設定")]
-    public InputActionProperty leftTriggerAction;
-    public InputActionProperty rightTriggerAction;
+    public InputActionProperty rightTriggerAction; // 右手 Trigger 繼續
 
     private List<string> lines = new List<string>();
     private int currentIndex = 0;
+    private bool isWaitingForChoice = false;
+    private string yesTarget;
+    private string noTarget;
+    private Coroutine movementCoroutine;
 
-    private void Awake()
-    {
-        LoadDialogue();
-    }
+    private void Awake() => LoadDialogue();
 
     private void Start()
     {
+        // 確保背景板開啟
         if (dialoguePlane != null) dialoguePlane.SetActive(true);
 
-        // 初始確保按鈕是關閉的
-        if (yesButton != null) yesButton.SetActive(false);
-        if (noButton != null) noButton.SetActive(false);
+        // 綁定按鈕事件
+        if (yesButton != null) yesButton.onClick.AddListener(OnYesClicked);
+        if (noButton != null) noButton.onClick.AddListener(OnNoClicked);
 
-        ShowLine();
+        // 初始狀態：隱藏按鈕 (隱藏按鈕時文字會自動開啟)
+        SetButtonsActive(false);
+
+        // 避開開頭的 :: 標籤並顯示第一行
+        CheckAndSkipLabels();
+        ShowLine(false);
     }
 
-    private void OnEnable() => SetupVRInput();
-
-    private void OnDisable()
+    private void OnEnable()
     {
-        if (leftTriggerAction.action != null) leftTriggerAction.action.started -= OnTriggerPressed;
-        if (rightTriggerAction.action != null) rightTriggerAction.action.started -= OnTriggerPressed;
-    }
-
-    void SetupVRInput()
-    {
-        if (leftTriggerAction.action != null)
-        {
-            leftTriggerAction.action.started += OnTriggerPressed;
-            leftTriggerAction.action.Enable();
-        }
         if (rightTriggerAction.action != null)
         {
             rightTriggerAction.action.started += OnTriggerPressed;
@@ -64,17 +57,203 @@ public class VRDialogueController : MonoBehaviour
         }
     }
 
+    private void OnDisable()
+    {
+        if (rightTriggerAction.action != null)
+            rightTriggerAction.action.started -= OnTriggerPressed;
+    }
+
     private void OnTriggerPressed(InputAction.CallbackContext context)
     {
-        // 只有在按鈕「沒出現」的時候，Trigger 才能換行
-        // 這樣可以強迫玩家在最後做出選擇
-        if (dialoguePlane != null && dialoguePlane.activeSelf)
+        // 只有在非選擇模式下，按 Trigger 才能換行
+        if (dialoguePlane != null && dialoguePlane.activeSelf && !isWaitingForChoice)
         {
-            bool isChoiceMode = (yesButton != null && yesButton.activeSelf);
-            if (!isChoiceMode)
+            OnNextStep();
+        }
+    }
+
+    public void OnNextStep()
+    {
+        currentIndex++;
+
+        if (currentIndex < lines.Count)
+        {
+            string line = lines[currentIndex].Trim();
+
+            // 處理 JumpTo 直接跳轉
+            if (line.StartsWith("JumpTo::"))
             {
-                OnNextStep();
+                JumpToSection(line.Replace("JumpTo", "").Trim());
+                return;
             }
+
+            // 遇到隱形標籤行，代表該段落結束
+            if (line.StartsWith("::"))
+            {
+                ResetDialogueUI();
+                return;
+            }
+
+            // 判斷是否接續上一行文字 [w]
+            bool isAppend = false;
+            if (currentIndex > 0 && lines[currentIndex - 1].Contains("[w]"))
+            {
+                isAppend = true;
+            }
+
+            ShowLine(isAppend);
+        }
+        else
+        {
+            ResetDialogueUI();
+        }
+    }
+
+    void ShowLine(bool append)
+    {
+        if (currentIndex >= lines.Count) return;
+
+        string rawLine = lines[currentIndex].Trim();
+
+        // 如果是標籤行，自動跳過
+        if (rawLine.StartsWith("::"))
+        {
+            OnNextStep();
+            return;
+        }
+
+        // 清理 UI 標籤
+        string cleanLine = rawLine.Replace("[w]", "").Replace("[lr]", "");
+
+        // 解析功能標籤 []
+        if (cleanLine.StartsWith("[") && cleanLine.Contains("]"))
+        {
+            int tagEnd = cleanLine.IndexOf(']');
+            string tagContent = cleanLine.Substring(1, tagEnd - 1);
+            string dialogueText = cleanLine.Substring(tagEnd + 1).Trim();
+
+            // 1. 移動處理
+            if (tagContent.StartsWith("NpcMove"))
+            {
+                HandleNpcMoveTag(tagContent);
+                UpdateText(dialogueText, append);
+            }
+            // 2. 選擇處理
+            else if (tagContent.StartsWith("CHOICE:"))
+            {
+                string[] targets = tagContent.Replace("CHOICE:", "").Split(',');
+                yesTarget = targets[0].Trim();
+                noTarget = targets[1].Trim();
+
+                isWaitingForChoice = true;
+                UpdateText(dialogueText, append); // 更新文字內容
+                SetButtonsActive(true);           // 顯示按鈕 (此時文字會被隱藏)
+            }
+            // 3. 一般動畫 Trigger
+            else
+            {
+                if (npcAnimator != null) npcAnimator.SetTrigger(tagContent);
+                UpdateText(dialogueText, append);
+            }
+        }
+        else
+        {
+            UpdateText(cleanLine, append);
+        }
+    }
+
+    void UpdateText(string newText, bool append)
+    {
+        if (dialogueContent == null) return;
+
+        if (append)
+            dialogueContent.text += "\n" + newText;
+        else
+            dialogueContent.text = newText;
+    }
+
+    // --- 按鈕與文字互斥邏輯 ---
+    void SetButtonsActive(bool state)
+    {
+        if (yesButton != null) yesButton.gameObject.SetActive(state);
+        if (noButton != null) noButton.gameObject.SetActive(state);
+
+        // 如果按鈕出現，文字就關閉；按鈕關閉，文字就出現
+        if (dialogueContent != null)
+        {
+            dialogueContent.gameObject.SetActive(!state);
+        }
+    }
+
+    public void OnYesClicked() => JumpToSection(yesTarget);
+    public void OnNoClicked() => JumpToSection(noTarget);
+
+    public void JumpToSection(string sectionTag)
+    {
+        isWaitingForChoice = false;
+        SetButtonsActive(false); // 恢復文字顯示
+
+        for (int i = 0; i < lines.Count; i++)
+        {
+            if (lines[i].Trim() == sectionTag)
+            {
+                currentIndex = i;
+                currentIndex++; // 跳過標籤行
+                ShowLine(false);
+                return;
+            }
+        }
+    }
+
+    // --- 移動邏輯 ---
+    void HandleNpcMoveTag(string tag)
+    {
+        string[] parts = tag.Split(',');
+        if (parts.Length >= 4)
+        {
+            float x = float.Parse(parts[1]);
+            float y = float.Parse(parts[2]);
+            float z = float.Parse(parts[3]);
+            MoveNpc(new Vector3(x, y, z));
+        }
+    }
+
+    void MoveNpc(Vector3 target)
+    {
+        if (movementCoroutine != null) StopCoroutine(movementCoroutine);
+        movementCoroutine = StartCoroutine(MoveNpcRoutine(target));
+    }
+
+    IEnumerator MoveNpcRoutine(Vector3 target)
+    {
+        if (npcAnimator != null) npcAnimator.SetTrigger("walk");
+
+        while (Vector3.Distance(npcAnimator.transform.position, target) > 0.1f)
+        {
+            Vector3 direction = (target - npcAnimator.transform.position).normalized;
+            if (direction != Vector3.zero)
+            {
+                Quaternion lookRot = Quaternion.LookRotation(new Vector3(direction.x, 0, direction.z));
+                npcAnimator.transform.rotation = Quaternion.Slerp(npcAnimator.transform.rotation, lookRot, Time.deltaTime * rotationSpeed);
+            }
+            npcAnimator.transform.position = Vector3.MoveTowards(npcAnimator.transform.position, target, moveSpeed * Time.deltaTime);
+            yield return null;
+        }
+    }
+
+    // --- 系統功能 ---
+    void ResetDialogueUI()
+    {
+        if (dialogueContent != null) dialogueContent.text = "";
+        SetButtonsActive(false);
+        isWaitingForChoice = false;
+    }
+
+    void CheckAndSkipLabels()
+    {
+        while (currentIndex < lines.Count && lines[currentIndex].Trim().StartsWith("::"))
+        {
+            currentIndex++;
         }
     }
 
@@ -82,79 +261,7 @@ public class VRDialogueController : MonoBehaviour
     {
         if (dialogueFile != null)
         {
-            lines.Clear();
-            string[] splitLines = dialogueFile.text.Split(new[] { '\n', '\r' }, System.StringSplitOptions.RemoveEmptyEntries);
-            lines.AddRange(splitLines);
+            lines = new List<string>(dialogueFile.text.Split(new[] { '\n', '\r' }, System.StringSplitOptions.RemoveEmptyEntries));
         }
-    }
-
-    public void OnNextStep()
-    {
-        currentIndex++;
-        if (currentIndex < lines.Count)
-        {
-            ShowLine();
-        }
-        else
-        {
-            // 對話播完，顯示 Yes/No 按鈕
-            ShowChoiceButtons();
-        }
-    }
-
-    void ShowLine()
-    {
-        if (lines.Count > 0 && currentIndex < lines.Count)
-        {
-            string rawLine = lines[currentIndex].Trim();
-
-            if (rawLine.StartsWith("[") && rawLine.Contains("]"))
-            {
-                int tagEnd = rawLine.IndexOf(']');
-                string actionTag = rawLine.Substring(1, tagEnd - 1);
-                string textText = rawLine.Substring(tagEnd + 1);
-
-                if (npcAnimator != null) npcAnimator.SetTrigger(actionTag);
-                dialogueContent.text = textText;
-            }
-            else
-            {
-                dialogueContent.text = rawLine;
-            }
-        }
-    }
-
-    void ShowChoiceButtons()
-    {
-        // 最後一行顯示完畢後的提示
-        dialogueContent.text = "請選擇你的決定：";
-        if (yesButton != null) yesButton.SetActive(true);
-        if (noButton != null) noButton.SetActive(true);
-    }
-
-    // 由 Yes Button 的 On Click 事件調用
-    public void OnYesClicked()
-    {
-        Debug.Log("Yes clicked!");
-        // 這裡可以觸發 NPC 另一個動畫，例如開心
-        if (npcAnimator != null) npcAnimator.SetTrigger("Happy");
-        EndDialogue();
-    }
-
-    // 由 No Button 的 On Click 事件調用
-    public void OnNoClicked()
-    {
-        Debug.Log("No clicked!");
-        // 這裡可以觸發 NPC 生氣或難過動畫
-        if (npcAnimator != null) npcAnimator.SetTrigger("Sad");
-        EndDialogue();
-    }
-
-    void EndDialogue()
-    {
-        if (yesButton != null) yesButton.SetActive(false);
-        if (noButton != null) noButton.SetActive(false);
-        if (dialoguePlane != null) dialoguePlane.SetActive(false);
-        currentIndex = 0;
     }
 }

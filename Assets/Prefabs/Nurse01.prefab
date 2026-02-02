@@ -1352,10 +1352,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1361273188309763049}
-  - component: {fileID: 9033436002358061763}
   - component: {fileID: 3828438668218883925}
   - component: {fileID: 8966440714630369021}
   - component: {fileID: 6953366055934156347}
+  - component: {fileID: 2313583962456852405}
   m_Layer: 0
   m_Name: Nurse01
   m_TagString: Untagged
@@ -1389,22 +1389,6 @@ Transform:
   - {fileID: 8416301721714439409}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &9033436002358061763
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5250163746301907994}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e698fad10c24aa42a3ced4d0745ae90, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  pointA: {fileID: 0}
-  pointB: {fileID: 0}
-  moveSpeed: 0.5
-  isTalking: 0
 --- !u!95 &3828438668218883925
 Animator:
   serializedVersion: 5
@@ -1475,6 +1459,28 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 1, z: 0}
+--- !u!195 &2313583962456852405
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5250163746301907994}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
 --- !u!1 &5271868776485877863
 GameObject:
   m_ObjectHideFlags: 0

@@ -8,8 +8,8 @@ using System.Collections;
 public class VRDialogueController : MonoBehaviour
 {
     [Header("UI 引用")]
-    public GameObject dialoguePlane;       // 對話背景板
-    public TextMeshProUGUI dialogueContent; // 對話文字
+    public GameObject dialoguePlane;
+    public TextMeshProUGUI dialogueContent;
     public Button yesButton;
     public Button noButton;
 
@@ -20,11 +20,12 @@ public class VRDialogueController : MonoBehaviour
 
     [Header("配置")]
     public TextAsset dialogueFile;
-    public InputActionProperty rightTriggerAction; // 右手 Trigger 繼續
+    public InputActionProperty rightTriggerAction;
 
     private List<string> lines = new List<string>();
     private int currentIndex = 0;
     private bool isWaitingForChoice = false;
+    private bool isCountingDown = false; // 用於 WAIT 標籤
     private string yesTarget;
     private string noTarget;
     private Coroutine movementCoroutine;
@@ -33,17 +34,12 @@ public class VRDialogueController : MonoBehaviour
 
     private void Start()
     {
-        // 確保背景板開啟
         if (dialoguePlane != null) dialoguePlane.SetActive(true);
 
-        // 綁定按鈕事件
         if (yesButton != null) yesButton.onClick.AddListener(OnYesClicked);
         if (noButton != null) noButton.onClick.AddListener(OnNoClicked);
 
-        // 初始狀態：隱藏按鈕 (隱藏按鈕時文字會自動開啟)
         SetButtonsActive(false);
-
-        // 避開開頭的 :: 標籤並顯示第一行
         CheckAndSkipLabels();
         ShowLine(false);
     }
@@ -65,8 +61,8 @@ public class VRDialogueController : MonoBehaviour
 
     private void OnTriggerPressed(InputAction.CallbackContext context)
     {
-        // 只有在非選擇模式下，按 Trigger 才能換行
-        if (dialoguePlane != null && dialoguePlane.activeSelf && !isWaitingForChoice)
+        // 只有在非選擇模式、非計時模式下，按 Trigger 才能換行
+        if (!isWaitingForChoice && !isCountingDown)
         {
             OnNextStep();
         }
@@ -75,38 +71,53 @@ public class VRDialogueController : MonoBehaviour
     public void OnNextStep()
     {
         currentIndex++;
+        ProcessCurrentLine();
+    }
 
-        if (currentIndex < lines.Count)
-        {
-            string line = lines[currentIndex].Trim();
-
-            // 處理 JumpTo 直接跳轉
-            if (line.StartsWith("JumpTo::"))
-            {
-                JumpToSection(line.Replace("JumpTo", "").Trim());
-                return;
-            }
-
-            // 遇到隱形標籤行，代表該段落結束
-            if (line.StartsWith("::"))
-            {
-                ResetDialogueUI();
-                return;
-            }
-
-            // 判斷是否接續上一行文字 [w]
-            bool isAppend = false;
-            if (currentIndex > 0 && lines[currentIndex - 1].Contains("[w]"))
-            {
-                isAppend = true;
-            }
-
-            ShowLine(isAppend);
-        }
-        else
+    // 將邏輯拆分，避免直接遞迴 OnNextStep 導致 StackOverflow
+    private void ProcessCurrentLine()
+    {
+        if (currentIndex >= lines.Count)
         {
             ResetDialogueUI();
+            return;
         }
+
+        string line = lines[currentIndex].Trim();
+
+        // 1. 處理跳轉標籤
+        if (line.StartsWith("JumpTo::"))
+        {
+            JumpToSection(line.Replace("JumpTo", "").Trim());
+            return;
+        }
+
+        // 2. 處理邏輯標籤 (自動跳過，不顯示)
+        if (line.StartsWith("::") || line.StartsWith("[ENDIF]") || line.StartsWith("[ELSE]"))
+        {
+            currentIndex++;
+            ProcessCurrentLine(); // 使用私有方法進行內部跳轉
+            return;
+        }
+
+        // 3. 處理 IF 邏輯
+        if (line.StartsWith("[IF:ITEM_ON_SOCKET"))
+        {
+            if (CheckSocketCondition(line))
+            {
+                currentIndex++; // 條件成立，執行下一行
+            }
+            else
+            {
+                SkipToTarget("[ELSE]", "[ENDIF]"); // 條件不成立，跳轉
+            }
+            ProcessCurrentLine();
+            return;
+        }
+
+        // 4. 顯示台詞內容
+        bool isAppend = (currentIndex > 0 && lines[currentIndex - 1].Contains("[w]"));
+        ShowLine(isAppend);
     }
 
     void ShowLine(bool append)
@@ -114,42 +125,39 @@ public class VRDialogueController : MonoBehaviour
         if (currentIndex >= lines.Count) return;
 
         string rawLine = lines[currentIndex].Trim();
-
-        // 如果是標籤行，自動跳過
-        if (rawLine.StartsWith("::"))
-        {
-            OnNextStep();
-            return;
-        }
-
-        // 清理 UI 標籤
         string cleanLine = rawLine.Replace("[w]", "").Replace("[lr]", "");
 
-        // 解析功能標籤 []
         if (cleanLine.StartsWith("[") && cleanLine.Contains("]"))
         {
             int tagEnd = cleanLine.IndexOf(']');
             string tagContent = cleanLine.Substring(1, tagEnd - 1);
             string dialogueText = cleanLine.Substring(tagEnd + 1).Trim();
 
-            // 1. 移動處理
+            // 處理標籤功能
             if (tagContent.StartsWith("NpcMove"))
             {
                 HandleNpcMoveTag(tagContent);
                 UpdateText(dialogueText, append);
             }
-            // 2. 選擇處理
             else if (tagContent.StartsWith("CHOICE:"))
             {
                 string[] targets = tagContent.Replace("CHOICE:", "").Split(',');
-                yesTarget = targets[0].Trim();
-                noTarget = targets[1].Trim();
+                // 統一格式：確保標籤前綴一致
+                yesTarget = targets[0].Trim().StartsWith("::") ? targets[0].Trim() : "::" + targets[0].Trim();
+                noTarget = targets[1].Trim().StartsWith("::") ? targets[1].Trim() : "::" + targets[1].Trim();
 
                 isWaitingForChoice = true;
-                UpdateText(dialogueText, append); // 更新文字內容
-                SetButtonsActive(true);           // 顯示按鈕 (此時文字會被隱藏)
+                UpdateText(dialogueText, append);
+                SetButtonsActive(true);
             }
-            // 3. 一般動畫 Trigger
+            else if (tagContent.StartsWith("WAIT:"))
+            {
+                if (float.TryParse(tagContent.Replace("WAIT:", ""), out float s))
+                {
+                    UpdateText(dialogueText, append);
+                    StartCoroutine(WaitTimeRoutine(s));
+                }
+            }
             else
             {
                 if (npcAnimator != null) npcAnimator.SetTrigger(tagContent);
@@ -162,59 +170,106 @@ public class VRDialogueController : MonoBehaviour
         }
     }
 
-    void UpdateText(string newText, bool append)
-    {
-        if (dialogueContent == null) return;
+    // --- 輔助邏輯 ---
 
-        if (append)
-            dialogueContent.text += "\n" + newText;
-        else
-            dialogueContent.text = newText;
+    bool CheckSocketCondition(string line)
+    {
+        string[] parts = line.Replace("[", "").Replace("]", "").Split(':');
+        string targetItemName = (parts.Length > 2) ? parts[2].Trim() : "";
+
+        ReplaceActivateChildren[] sockets = FindObjectsOfType<ReplaceActivateChildren>();
+        foreach (var s in sockets)
+        {
+            if (s.gameObject.name == targetItemName && s.CheckIfActivated()) return true;
+        }
+        return false;
     }
 
-    // --- 按鈕與文字互斥邏輯 ---
-    void SetButtonsActive(bool state)
+    void SkipToTarget(string targetA, string targetB)
     {
-        if (yesButton != null) yesButton.gameObject.SetActive(state);
-        if (noButton != null) noButton.gameObject.SetActive(state);
-
-        // 如果按鈕出現，文字就關閉；按鈕關閉，文字就出現
-        if (dialogueContent != null)
+        while (currentIndex < lines.Count)
         {
-            dialogueContent.gameObject.SetActive(!state);
+            string l = lines[currentIndex].Trim();
+            if (l == targetA || l == targetB) return;
+            currentIndex++;
         }
+    }
+
+    IEnumerator WaitTimeRoutine(float seconds)
+    {
+        isCountingDown = true;
+        yield return new WaitForSeconds(seconds);
+        isCountingDown = false;
+        OnNextStep(); // 時間到自動下一行
+    }
+
+    public void JumpToSection(string sectionTag)
+    {
+        isWaitingForChoice = false;
+        isCountingDown = false;
+        SetButtonsActive(false);
+
+        string target = sectionTag.StartsWith("::") ? sectionTag : "::" + sectionTag;
+
+        for (int i = 0; i < lines.Count; i++)
+        {
+            if (lines[i].Trim() == target)
+            {
+                currentIndex = i;
+                ProcessCurrentLine(); // 找到後立即處理該行(標籤會被自動跳過)
+                return;
+            }
+        }
+        Debug.LogError("找不到標籤: " + target);
     }
 
     public void OnYesClicked() => JumpToSection(yesTarget);
     public void OnNoClicked() => JumpToSection(noTarget);
 
-    public void JumpToSection(string sectionTag)
-    {
-        isWaitingForChoice = false;
-        SetButtonsActive(false); // 恢復文字顯示
+    // --- 基礎 UI 與移動 ---
 
-        for (int i = 0; i < lines.Count; i++)
-        {
-            if (lines[i].Trim() == sectionTag)
-            {
-                currentIndex = i;
-                currentIndex++; // 跳過標籤行
-                ShowLine(false);
-                return;
-            }
-        }
+    void UpdateText(string newText, bool append)
+    {
+        if (dialogueContent == null) return;
+        if (append) dialogueContent.text += "\n" + newText;
+        else dialogueContent.text = newText;
     }
 
-    // --- 移動邏輯 ---
+    void SetButtonsActive(bool state)
+    {
+        if (yesButton != null) yesButton.gameObject.SetActive(state);
+        if (noButton != null) noButton.gameObject.SetActive(state);
+        if (dialogueContent != null) dialogueContent.gameObject.SetActive(!state);
+    }
+
+    void ResetDialogueUI()
+    {
+        if (dialogueContent != null) dialogueContent.text = "";
+        SetButtonsActive(false);
+        isWaitingForChoice = false;
+        isCountingDown = false;
+    }
+
+    void CheckAndSkipLabels()
+    {
+        while (currentIndex < lines.Count && lines[currentIndex].Trim().StartsWith("::")) currentIndex++;
+    }
+
+    void LoadDialogue()
+    {
+        if (dialogueFile != null)
+            lines = new List<string>(dialogueFile.text.Split(new[] { '\n', '\r' }, System.StringSplitOptions.RemoveEmptyEntries));
+    }
+
     void HandleNpcMoveTag(string tag)
     {
         string[] parts = tag.Split(',');
         if (parts.Length >= 4)
         {
-            float x = float.Parse(parts[1]);
-            float y = float.Parse(parts[2]);
-            float z = float.Parse(parts[3]);
-            MoveNpc(new Vector3(x, y, z));
+            if (float.TryParse(parts[1], out float x) && float.TryParse(parts[2], out float y) && float.TryParse(parts[3], out float z))
+            {
+                MoveNpc(new Vector3(x, y, z));
+            }
         }
     }
 
@@ -227,41 +282,13 @@ public class VRDialogueController : MonoBehaviour
     IEnumerator MoveNpcRoutine(Vector3 target)
     {
         if (npcAnimator != null) npcAnimator.SetTrigger("walk");
-
         while (Vector3.Distance(npcAnimator.transform.position, target) > 0.1f)
         {
-            Vector3 direction = (target - npcAnimator.transform.position).normalized;
-            if (direction != Vector3.zero)
-            {
-                Quaternion lookRot = Quaternion.LookRotation(new Vector3(direction.x, 0, direction.z));
-                npcAnimator.transform.rotation = Quaternion.Slerp(npcAnimator.transform.rotation, lookRot, Time.deltaTime * rotationSpeed);
-            }
+            Vector3 dir = (target - npcAnimator.transform.position).normalized;
+            if (dir != Vector3.zero) npcAnimator.transform.rotation = Quaternion.Slerp(npcAnimator.transform.rotation, Quaternion.LookRotation(new Vector3(dir.x, 0, dir.z)), Time.deltaTime * rotationSpeed);
             npcAnimator.transform.position = Vector3.MoveTowards(npcAnimator.transform.position, target, moveSpeed * Time.deltaTime);
             yield return null;
         }
-    }
-
-    // --- 系統功能 ---
-    void ResetDialogueUI()
-    {
-        if (dialogueContent != null) dialogueContent.text = "";
-        SetButtonsActive(false);
-        isWaitingForChoice = false;
-    }
-
-    void CheckAndSkipLabels()
-    {
-        while (currentIndex < lines.Count && lines[currentIndex].Trim().StartsWith("::"))
-        {
-            currentIndex++;
-        }
-    }
-
-    void LoadDialogue()
-    {
-        if (dialogueFile != null)
-        {
-            lines = new List<string>(dialogueFile.text.Split(new[] { '\n', '\r' }, System.StringSplitOptions.RemoveEmptyEntries));
-        }
+        if (npcAnimator != null) npcAnimator.SetTrigger("idle");
     }
 }

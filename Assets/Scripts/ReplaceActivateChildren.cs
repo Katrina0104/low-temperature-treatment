@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Events;
 
 public class ReplaceActivateChildren : MonoBehaviour
 {
@@ -10,6 +11,9 @@ public class ReplaceActivateChildren : MonoBehaviour
 
     [Header("偵測模式")]
     public bool useTrigger = true;
+
+    [Header("劇本連動設定")]
+    public UnityEvent OnActivatedEvent; // 建立一個事件，成功時會執行
 
     private bool activated = false;
 
@@ -60,5 +64,13 @@ public class ReplaceActivateChildren : MonoBehaviour
                 }
             }
         }
+
+        // 2. 【新增】通知對話系統
+        Debug.Log("<color=green>[系統]</color> 物品正確連接，觸發劇本事件。");
+        OnActivatedEvent?.Invoke(); // 執行所有綁定在這個事件上的 Function
+    }
+    public bool CheckIfActivated()
+    {
+        return activated;
     }
 }

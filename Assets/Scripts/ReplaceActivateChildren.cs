@@ -66,8 +66,10 @@ public class ReplaceActivateChildren : MonoBehaviour
         }
 
         // 2. 【新增】通知對話系統
-        Debug.Log("<color=green>[系統]</color> 物品正確連接，觸發劇本事件。");
-        OnActivatedEvent?.Invoke(); // 執行所有綁定在這個事件上的 Function
+        activated = true;
+        Debug.Log($"<color=green>[觸發成功]</color> GameObject '{this.gameObject.name}' 的 activated 設為 true");
+        Debug.Log($"<color=green>[系統]</color> 物品正確連接，觸發劇本事件。");
+        OnActivatedEvent?.Invoke();
     }
     public bool CheckIfActivated()
     {

@@ -20,7 +20,8 @@ public class VRDialogueController : MonoBehaviour
 
     [Header("配置")]
     public TextAsset dialogueFile;
-    public InputActionProperty rightTriggerAction;
+    public InputActionProperty nextLineAction; // 原本的 rightTriggerAction 改名或重新綁定為 A 鍵
+    public InputActionProperty prevLineAction; // 新增 B 鍵的綁定
 
     private List<string> lines = new List<string>();
     private int currentIndex = 0;
@@ -50,32 +51,53 @@ public class VRDialogueController : MonoBehaviour
 
     private void OnEnable()
     {
-        if (rightTriggerAction.action != null)
+        if (nextLineAction.action != null)
         {
-            rightTriggerAction.action.started += OnTriggerPressed;
-            rightTriggerAction.action.Enable();
+            nextLineAction.action.started += ctx => { if (!isWaitingForChoice && !isCountingDown) OnNextStep(); };
+            nextLineAction.action.Enable();
+        }
+        if (prevLineAction.action != null)
+        {
+            prevLineAction.action.started += ctx => { if (!isWaitingForChoice && !isCountingDown) OnPrevStep(); };
+            prevLineAction.action.Enable();
         }
     }
 
     private void OnDisable()
     {
-        if (rightTriggerAction.action != null)
-            rightTriggerAction.action.started -= OnTriggerPressed;
-    }
-
-    private void OnTriggerPressed(InputAction.CallbackContext context)
-    {
-        // 只有在非選擇模式、非計時模式下，按 Trigger 才能換行
-        if (!isWaitingForChoice && !isCountingDown)
-        {
-            OnNextStep();
-        }
+        if (nextLineAction.action != null)
+            nextLineAction.action.started -= ctx => { if (!isWaitingForChoice && !isCountingDown) OnNextStep(); };
     }
 
     public void OnNextStep()
     {
         currentIndex++;
         ProcessCurrentLine();
+    }
+
+    public void OnPrevStep()
+    {
+        if (currentIndex <= 0) return;
+
+        // 往回找，直到找到不是標籤的行
+        do
+        {
+            currentIndex--;
+        } while (currentIndex > 0 && IsLogicLabel(lines[currentIndex].Trim()));
+
+        ProcessCurrentLine();
+    }
+
+    // 輔助判斷是否為邏輯標籤，避免回溯時卡在系統指令上
+    private bool IsLogicLabel(string line)
+    {
+        return line.StartsWith("::") ||
+               line.StartsWith("[IF") ||
+               line.StartsWith("[ELSE]") ||
+               line.StartsWith("[ENDIF]") ||
+               line.StartsWith("JumpTo::") ||
+               line.StartsWith("[ROLL") ||
+               line.StartsWith("[INC_DAY]");
     }
 
     // 將邏輯拆分，避免直接遞迴 OnNextStep 導致 StackOverflow
@@ -230,6 +252,38 @@ public class VRDialogueController : MonoBehaviour
             if (eventManager != null) eventManager.SetAlarm(false);
             OnNextStep();
             return;
+        }
+
+        //5.調整溫度跟時間的textmesh
+        if (line.StartsWith("[IF:TEXT_CHECK"))
+        {
+            // 格式範例: [IF:TEXT_CHECK:TemperatureValueText:33度]
+            string targetObjectName = "";
+            string expectedText = "";
+
+            string[] parts = line.Replace("[", "").Replace("]", "").Split(':');
+            if (parts.Length >= 4)
+            {
+                targetObjectName = parts[2].Trim(); // 物件名稱
+                expectedText = parts[3].Trim();     // 想要看到的文字
+            }
+
+            // 呼叫自定義的檢查方法
+            bool isMatch = CheckSpecificText(targetObjectName, expectedText);
+
+            if (!isMatch)
+            {
+                Debug.Log($"<color=orange>[檢查失敗]</color> 物件 '{targetObjectName}' 文字不含 '{expectedText}'，跳往 [ELSE]");
+                SkipToTarget("[ELSE]", "[ENDIF]");
+                OnNextStep();
+                return;
+            }
+            else
+            {
+                Debug.Log($"<color=green>[檢查通過]</color> 物件 '{targetObjectName}' 內容正確！");
+                OnNextStep();
+                return;
+            }
         }
 
         // 5. 顯示台詞內容
@@ -426,5 +480,43 @@ public class VRDialogueController : MonoBehaviour
             yield return null;
         }
         if (npcAnimator != null) npcAnimator.SetTrigger("idle");
+    }
+
+    private bool CheckSpecificText(string objectName, string targetText)
+    {
+        GameObject targetGO = null;
+
+        // 1. 遍歷全場景（包含隱藏物件）尋找目標物件
+        Transform[] allTransforms = Resources.FindObjectsOfTypeAll<Transform>();
+        foreach (Transform t in allTransforms)
+        {
+            if (t.name == objectName && t.gameObject.scene.name != null)
+            {
+                targetGO = t.gameObject;
+                break;
+            }
+        }
+
+        if (targetGO != null)
+        {
+            // 2. 獲取文字組件
+            TextMeshProUGUI tmp = targetGO.GetComponent<TextMeshProUGUI>();
+            if (tmp != null)
+            {
+                string currentText = tmp.text.Trim();
+                // 使用 Contains 比較安全，避免空格或隱藏字元干擾
+                return currentText.Contains(targetText);
+            }
+            else
+            {
+                Debug.LogWarning($"<color=red>[錯誤]</color> 物件 '{objectName}' 沒有 TextMeshProUGUI 組件！");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"<color=red>[錯誤]</color> 找不到名為 '{objectName}' 的文字物件！");
+        }
+
+        return false;
     }
 }

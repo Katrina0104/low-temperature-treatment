@@ -14,13 +14,23 @@ public class TemperatureSimulation : MonoBehaviour
     [Header("圖表引用")]
     public RealTimeGraph patientTempGraph;
 
-    [Header("數值來源")]
-    public TimeValueController coolingTimer;
-    public TimeValueController rewarmingTimer;
+    //[Header("數值來源")]
+    //public TimeValueController coolingTimer;
+    //public TimeValueController rewarmingTimer;
 
     [Header("時間與流速")]
     public float timeMultiplier = 10f;
     public float totalGraphTimeMinutes = 720f;
+
+    [Header("速率來源 (取代原本的 Timer)")]
+    public RateValueController coolingRateCtrl;   // 拖入降溫速率控制器
+    public RateValueController rewarmingRateCtrl; // 拖入升溫速率控制器
+
+    [Header("顯示換算後的預計時長")]
+    public TextMeshProUGUI coolingDurationDisplay;   // 顯示「預計降溫時間」
+    public TextMeshProUGUI coolingDurationDisplay1;   // 顯示「預計降溫時間」
+    public TextMeshProUGUI rewarmingDurationDisplay; // 顯示「預計升溫時間」
+    public TextMeshProUGUI rewarmingDurationDisplay1; // 顯示「預計升溫時間」
 
     [Header("溫度設定")]
     public float initialTemp = 37.0f;
@@ -45,8 +55,11 @@ public class TemperatureSimulation : MonoBehaviour
 
     void Update()
     {
+        UpdateEstimatedTimeUI(); // 讓玩家調整速率時，時間跟著跳動
+
         if (!isRunning || isPaused) return;
 
+        // 2. 計算此幀經過的模擬時間
         float speedUpDeltaTime = Time.deltaTime * timeMultiplier;
         sessionTotalSimulatedSeconds += speedUpDeltaTime;
         float currentSimMinutes = sessionTotalSimulatedSeconds / 60f;
@@ -59,13 +72,14 @@ public class TemperatureSimulation : MonoBehaviour
             lastRecordTime = currentSimMinutes;
         }
 
+        // 5. 執行溫度模擬
         if (currentState == State.Cooling)
         {
-            SimulateTemperature(initialTemp, targetCoolTemp, coolingTimer.GetTotalMinutes(), State.Rewarming, speedUpDeltaTime);
+            SimulateTemperature(initialTemp, targetCoolTemp, GetCalculatedCoolingMinutes(), State.Rewarming, speedUpDeltaTime);
         }
         else if (currentState == State.Rewarming)
         {
-            SimulateTemperature(targetCoolTemp, targetRewarmTemp, rewarmingTimer.GetTotalMinutes(), State.Finished, speedUpDeltaTime);
+            SimulateTemperature(targetCoolTemp, targetRewarmTemp, GetCalculatedRewarmingMinutes(), State.Finished, speedUpDeltaTime);
         }
     }
 
@@ -91,6 +105,20 @@ public class TemperatureSimulation : MonoBehaviour
         Debug.Log($"掃描線進度: {progress * 100:F2}%, X座標: {targetX:F2}");
     }
 
+    void UpdateEstimatedTimeUI()
+    {
+        float cMin = GetCalculatedCoolingMinutes();
+        float rMin = GetCalculatedRewarmingMinutes();
+
+        if (coolingDurationDisplay != null)
+            coolingDurationDisplay.text = $"{(int)cMin / 60}h {(int)cMin % 60}m";
+
+        if (rewarmingDurationDisplay != null)
+            rewarmingDurationDisplay.text = $"{(int)rMin / 60}h {(int)rMin % 60}m";
+    }
+
+
+
     void SimulateTemperature(float startTemp, float endTemp, float durationMinutes, State nextState, float deltaTime)
     {
         if (durationMinutes <= 0)
@@ -99,15 +127,35 @@ public class TemperatureSimulation : MonoBehaviour
             TransitionTo(nextState);
             return;
         }
+
         float durationSeconds = durationMinutes * 60f;
         elapsedTime += deltaTime;
+
         currentTemp = Mathf.Lerp(startTemp, endTemp, elapsedTime / durationSeconds);
+
         if (elapsedTime / durationSeconds >= 1.0f)
         {
             currentTemp = endTemp;
             TransitionTo(nextState);
         }
         UpdateUI();
+    }
+
+    // --- 新增：自動計算時長的函式 ---
+    public float GetCalculatedCoolingMinutes()
+    {
+        if (coolingRateCtrl == null) return 0;
+        float tempDiff = Mathf.Abs(initialTemp - targetCoolTemp);
+        float rate = coolingRateCtrl.currentRate;
+        return (tempDiff / rate) * 60f;
+    }
+
+    public float GetCalculatedRewarmingMinutes()
+    {
+        if (rewarmingRateCtrl == null) return 0;
+        float tempDiff = Mathf.Abs(targetRewarmTemp - targetCoolTemp);
+        float rate = rewarmingRateCtrl.currentRate;
+        return (tempDiff / rate) * 60f;
     }
 
     void TransitionTo(State newState)
@@ -124,7 +172,7 @@ public class TemperatureSimulation : MonoBehaviour
         elapsedTime = 0f;
         sessionTotalSimulatedSeconds = 0f;
         lastRecordTime = -1f;
-        patientTempGraph.ClearGraph();
+        if (patientTempGraph != null) patientTempGraph.ClearGraph();
 
         currentState = State.Cooling;
         isRunning = true;

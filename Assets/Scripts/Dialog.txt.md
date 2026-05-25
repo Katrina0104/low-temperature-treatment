@@ -1,5 +1,5 @@
 ::START
-按“右鍵trigger”繼續 [w]
+按“右鍵A”繼續 [w]
 [talk] 菜鳥，這是你第一次實習吧？ [lr]
 [talk] 別擔心，我會照顧你的 [w]
 [NpcMove,2.45,0,-0.3] 跟我來 [w]
@@ -325,7 +325,7 @@ JumpTo::Check_MgSO4
 記得調整正下方時間[w]
 "請儲存所有調整"[lr]
 ::Speed_Check
-[IF:TEXT_CHECK:復溫時間:0:25]
+[IF:TEXT_CHECK:復溫速率:速率:0.25°C/hr]
     [talk] 復溫速率已設置為 0.25，做得好。 [w]
     [RETURN]
 [ELSE]

@@ -35,6 +35,9 @@ public class VRDialogueController : MonoBehaviour
     [Header("外部系統連結")]
     public EventManager eventManager;
 
+    [Header("防卡鍵保護開關")]
+    private bool isButtonAvailable = true; // 保護鎖，防止 Unity 運作延遲漏掉放開訊號
+
     private void Awake() => LoadDialogue();
 
     private void Start()
@@ -51,22 +54,66 @@ public class VRDialogueController : MonoBehaviour
 
     private void OnEnable()
     {
+        // 1. 綁定下一行 (A鍵)
         if (nextLineAction.action != null)
         {
-            nextLineAction.action.started += ctx => { if (!isWaitingForChoice && !isCountingDown) OnNextStep(); };
+            nextLineAction.action.performed += OnNextLinePerformed;
             nextLineAction.action.Enable();
         }
+
+        // 2. 綁定上一行 (B鍵)
         if (prevLineAction.action != null)
         {
-            prevLineAction.action.started += ctx => { if (!isWaitingForChoice && !isCountingDown) OnPrevStep(); };
+            prevLineAction.action.performed += OnPrevLinePerformed;
             prevLineAction.action.Enable();
         }
     }
 
     private void OnDisable()
     {
+        // 3. 確實解除下一行監聽
         if (nextLineAction.action != null)
-            nextLineAction.action.started -= ctx => { if (!isWaitingForChoice && !isCountingDown) OnNextStep(); };
+        {
+            nextLineAction.action.performed -= OnNextLinePerformed;
+            nextLineAction.action.Disable(); // 順便關閉 Action 釋放資源
+        }
+
+        // 4. 確實解除上一行監聽 (修正原本誤寫成 += 的代碼)
+        if (prevLineAction.action != null)
+        {
+            prevLineAction.action.performed -= OnPrevLinePerformed;
+            prevLineAction.action.Disable();
+        }
+    }
+
+    // 右手 A 鍵被確實按下時觸發
+    private void OnNextLinePerformed(InputAction.CallbackContext context)
+    {
+        // 如果保護鎖啟動中、等待選擇中或倒數中，直接攔截不執行
+        if (!isButtonAvailable || isWaitingForChoice || isCountingDown) return;
+
+        // 啟動 0.2 秒保護鎖，讓模擬器有時間消化「按鍵彈起」的訊號
+        StartCoroutine(ButtonCooldownRoutine());
+
+        OnNextStep();
+    }
+
+    // 右手 B 鍵被確實按下時觸發
+    private void OnPrevLinePerformed(InputAction.CallbackContext context)
+    {
+        if (!isButtonAvailable || isWaitingForChoice || isCountingDown) return;
+
+        StartCoroutine(ButtonCooldownRoutine());
+
+        OnPrevStep(); // 呼叫你寫好的回溯上一行方法
+    }
+
+    // 0.2 秒的極短保護冷卻
+    private IEnumerator ButtonCooldownRoutine()
+    {
+        isButtonAvailable = false;
+        yield return new WaitForSeconds(0.2f); // 0.2秒對人類無感，但對處理器來說很久
+        isButtonAvailable = true;
     }
 
     public void OnNextStep()

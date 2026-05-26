@@ -31,6 +31,7 @@ public class VRDialogueController : MonoBehaviour
     private string yesTarget;
     private string noTarget;
     private Coroutine movementCoroutine;
+    private Coroutine waitCoroutine;
 
     [Header("外部系統連結")]
     public EventManager eventManager;
@@ -118,6 +119,7 @@ public class VRDialogueController : MonoBehaviour
 
     public void OnNextStep()
     {
+        Debug.Log($"OnNextStep called, currentIndex: {currentIndex}");
         currentIndex++;
         ProcessCurrentLine();
     }
@@ -126,7 +128,14 @@ public class VRDialogueController : MonoBehaviour
     {
         if (currentIndex <= 0) return;
 
-        // 往回找，直到找到不是標籤的行
+        // 重置可能卡住的狀態
+        isWaitingForChoice = false;
+        isCountingDown = false;
+        SetButtonsActive(false);
+
+        // 停止所有 Coroutine（避免 WAIT 倒數還在跑）
+        StopAllCoroutines();
+
         do
         {
             currentIndex--;
@@ -373,7 +382,8 @@ public class VRDialogueController : MonoBehaviour
                 if (float.TryParse(tagContent.Replace("WAIT:", ""), out float s))
                 {
                     UpdateText(dialogueText, append);
-                    StartCoroutine(WaitTimeRoutine(s));
+                    if (waitCoroutine != null) StopCoroutine(waitCoroutine); // 萬一有舊的先停
+                    waitCoroutine = StartCoroutine(WaitTimeRoutine(s));      // 記住新的
                 }
             }
             else
@@ -437,11 +447,18 @@ public class VRDialogueController : MonoBehaviour
         isCountingDown = true;
         yield return new WaitForSeconds(seconds);
         isCountingDown = false;
-        OnNextStep(); // 時間到自動下一行
+        waitCoroutine = null;   // 跑完自己清掉
+        OnNextStep();
     }
 
     public void JumpToSection(string sectionTag)
     {
+        if (waitCoroutine != null)
+        {
+            StopCoroutine(waitCoroutine);  // ← 這才是真正停掉
+            waitCoroutine = null;
+        }
+
         isWaitingForChoice = false;
         isCountingDown = false;
         SetButtonsActive(false);

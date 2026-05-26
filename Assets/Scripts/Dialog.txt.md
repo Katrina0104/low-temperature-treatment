@@ -86,7 +86,7 @@ JumpTo::BREATH_CHECK
 [talk]幫我找到低物治療儀器，並開始降溫療程 [lr]
 "調整降溫數值至33度" 請記得做儲存 [w]
 ::Check_Setup
-[IF:TEXT_CHECK:降溫目標溫度:33]
+[IF:TEXT_CHECK:Cooling_temperature:33]
     [talk] 溫度已達到 33.0 度，做得好。 [w]
     JumpTo::Next_Step
 [ELSE]
@@ -135,7 +135,7 @@ JumpTo::BREATH_CHECK
 [talk]療程尚未結束，請多關注患者情況[w]
 "請完成每日例行行程"[lr]
 ::Event1
-不需要重新接輸水管嗎？[lr]
+需要重新接輸水管嗎？[lr]
 [CHOICE:::Event1_Yes,::Event1_No] 
 ::Event1_No
 [talk] 非常好~重新接輸水管不是每日例行公事 [lr]
@@ -157,7 +157,7 @@ JumpTo::Event2
 [WAIT:5]可以在照顧患者時，觀看治療手冊![w]
 [ROLL_EQUIP]
 [ALARM_OFF]
-[WAIT:9]可以在照顧患者時，觀看治療手冊![w]
+[WAIT:3]可以在照顧患者時，觀看治療手冊![w]
 [ROLL_SHIVER]
 [ALARM_OFF]
 [WAIT:7]可以在照顧患者時，觀看治療手冊![w]
@@ -193,7 +193,7 @@ JumpTo::Event6
 [talk] 使用外部冷卻貼片時，由於表面微血管血流減少，病患皮膚破損的風險增加。請再思考一下! [w]
 JumpTo::Event5
 ::Event6
-[WAIT:8]可以在照顧患者時，觀看治療手冊![w]
+[WAIT:3]可以在照顧患者時，觀看治療手冊![w]
 [ROLL_SHIVER]
 [ALARM_OFF]
 [WAIT:5]可以在照顧患者時，觀看治療手冊![w]
@@ -229,13 +229,13 @@ JumpTo::Event9
 [talk] 使用外部冷卻貼片時，由於表面微血管血流減少，病患皮膚破損的風險增加。請再思考一下! [w]
 JumpTo::Event8
 ::Event9
-[WAIT:8]可以在照顧患者時，觀看治療手冊![lr]
+[WAIT:4]可以在照顧患者時，觀看治療手冊![lr]
 [ROLL_SHIVER]
 [ALARM_OFF]
 [WAIT:5]可以在照顧患者時，觀看治療手冊![lr]
 [ROLL_BP]
 [ALARM_OFF]
-[WAIT:7]可以在照顧患者時，觀看治療手冊![lr]
+[WAIT:6]可以在照顧患者時，觀看治療手冊![lr]
 [ROLL_EQUIP]
 [talk] 恭喜今日任務完成。 [lr]
 
@@ -313,7 +313,7 @@ JumpTo::Check_MgSO4
 請調整復溫數值[w]
 請將復溫溫度選為37度[lr]
 ::Temperature
-[IF:TEXT_CHECK:復溫目標溫度:37]
+[IF:TEXT_CHECK:Reheating_temperature:37]
     [talk] 溫度已設置為 37.0 度，做得好。 [w]
     JumpTo::Speed
 [ELSE]
@@ -325,7 +325,7 @@ JumpTo::Check_MgSO4
 記得調整正下方時間[w]
 "請儲存所有調整"[lr]
 ::Speed_Check
-[IF:TEXT_CHECK:復溫速率:速率:0.25°C/hr]
+[IF:TEXT_CHECK:reheat_rate:速率:0.25°C/hr]
     [talk] 復溫速率已設置為 0.25，做得好。 [w]
     [RETURN]
 [ELSE]

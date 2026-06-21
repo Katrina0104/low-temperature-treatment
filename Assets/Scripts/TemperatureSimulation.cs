@@ -22,7 +22,7 @@ public class TemperatureSimulation : MonoBehaviour
     public float timeMultiplier = 10f;
     public float totalGraphTimeMinutes = 720f;
 
-    [Header("速率來源 (取代原本的 Timer)")]
+    [Header("速率來源")]
     public RateValueController coolingRateCtrl;   // 拖入降溫速率控制器
     public RateValueController rewarmingRateCtrl; // 拖入升溫速率控制器
 
@@ -73,14 +73,54 @@ public class TemperatureSimulation : MonoBehaviour
         }
 
         // 5. 執行溫度模擬
-        if (currentState == State.Cooling)
+        /*if (currentState == State.Cooling)
         {
             SimulateTemperature(initialTemp, targetCoolTemp, GetCalculatedCoolingMinutes(), State.Rewarming, speedUpDeltaTime);
         }
         else if (currentState == State.Rewarming)
         {
             SimulateTemperature(targetCoolTemp, targetRewarmTemp, GetCalculatedRewarmingMinutes(), State.Finished, speedUpDeltaTime);
+        }*/
+
+        //讓目標溫度可以動態調整
+        if (currentState == State.Cooling)
+        {
+            // 將速率 (度/小時) 轉換為 (度/秒)，並乘上加速時間
+            float maxDistanceDelta = (coolingRateCtrl.currentRate / 3600f) * speedUpDeltaTime;
+
+            // 從「當前溫度」平滑移動到「目標溫度」
+            currentTemp = Mathf.MoveTowards(currentTemp, targetCoolTemp, maxDistanceDelta);
+
+            // 如果已經到達目標溫度
+            if (Mathf.Approximately(currentTemp, targetCoolTemp))
+            {
+                TransitionTo(State.Rewarming);
+            }
         }
+        else if (currentState == State.Rewarming)
+        {
+            float maxDistanceDelta = (rewarmingRateCtrl.currentRate / 3600f) * speedUpDeltaTime;
+            currentTemp = Mathf.MoveTowards(currentTemp, targetRewarmTemp, maxDistanceDelta);
+
+            if (Mathf.Approximately(currentTemp, targetRewarmTemp))
+            {
+                TransitionTo(State.Finished);
+            }
+        }
+
+        UpdateUI();
+    }
+    // --- 新增：調整目標溫度的函式 ---
+    public void AddCoolingTarget(float amount)
+    {
+        targetCoolTemp += amount;
+        UpdateUI(); // 即時更新面板數字
+    }
+
+    public void AddRewarmingTarget(float amount)
+    {
+        targetRewarmTemp += amount;
+        UpdateUI();
     }
 
     void UpdateTimeIndicator(float currentSimMinutes)
@@ -145,36 +185,51 @@ public class TemperatureSimulation : MonoBehaviour
     public float GetCalculatedCoolingMinutes()
     {
         if (coolingRateCtrl == null) return 0;
-        float tempDiff = Mathf.Abs(initialTemp - targetCoolTemp);
+
+        if (currentState == State.Rewarming || currentState == State.Finished)
+            return 0f;
+        // 動態剩餘時間：以「當前溫度」與「目標」的差距來計算
+        float startPoint = (currentState == State.Idle) ? initialTemp : currentTemp;
+        float tempDiff = Mathf.Abs(startPoint - targetCoolTemp);
         float rate = coolingRateCtrl.currentRate;
+
         return (tempDiff / rate) * 60f;
     }
 
     public float GetCalculatedRewarmingMinutes()
     {
         if (rewarmingRateCtrl == null) return 0;
-        float tempDiff = Mathf.Abs(targetRewarmTemp - targetCoolTemp);
+
+        if (currentState == State.Finished)
+            return 0f;
+
+        float startPoint = (currentState == State.Rewarming) ? currentTemp : targetCoolTemp;
+        float tempDiff = Mathf.Abs(targetRewarmTemp - startPoint);
         float rate = rewarmingRateCtrl.currentRate;
+
         return (tempDiff / rate) * 60f;
     }
 
     void TransitionTo(State newState)
     {
-        elapsedTime = 0f;
+        //elapsedTime = 0f;
         currentState = newState;
         if (newState == State.Finished) isRunning = false;
     }
 
     public void StartSimulation()
     {
-        // 重置所有數據
-        currentTemp = initialTemp;
-        elapsedTime = 0f;
-        sessionTotalSimulatedSeconds = 0f;
-        lastRecordTime = -1f;
-        if (patientTempGraph != null) patientTempGraph.ClearGraph();
+        // 只有在 Idle 狀態下按 Start 才會重置圖表
+        if (currentState == State.Idle || currentState == State.Finished)
+        {
+            currentTemp = initialTemp;
+            sessionTotalSimulatedSeconds = 0f;
+            lastRecordTime = -1f;
+            if (patientTempGraph != null) patientTempGraph.ClearGraph();
+            currentState = State.Cooling;
+        }
 
-        currentState = State.Cooling;
+        // 如果是暫停狀態，就只是單純恢復運行
         isRunning = true;
         isPaused = false;
     }
@@ -186,8 +241,8 @@ public class TemperatureSimulation : MonoBehaviour
 
     void UpdateUI()
     {
-        currentTempDisplay.text = $"{currentTemp:F1} °C";
-        statusDisplay.text = isPaused ? "PAUSED" : (isRunning ? currentState.ToString() : "READY");
+        if (currentTempDisplay != null) currentTempDisplay.text = $"{currentTemp:F1} °C";
+        if (statusDisplay != null) statusDisplay.text = isPaused ? "PAUSED" : (isRunning ? currentState.ToString() : "READY");
 
         // 更新設定數值文字
         if (coolingSettingText != null) coolingSettingText.text = $"{targetCoolTemp:F1}";

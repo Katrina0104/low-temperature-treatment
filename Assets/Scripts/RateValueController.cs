@@ -5,7 +5,7 @@ public class RateValueController : MonoBehaviour
 {
     public TextMeshProUGUI rateDisplay;
     public string label = "速率";
-    public float currentRate = 0.25f; // 預設每小時 0.5 度
+    public float currentRate = 0.55f; // 預設每小時 0.5 度
     public float step = 0.05f;       // 每次加減 0.05
     public float minRate = 0.1f;
     public float maxRate = 2.0f;
@@ -27,6 +27,6 @@ public class RateValueController : MonoBehaviour
     void UpdateDisplay()
     {
         if (rateDisplay != null)
-            rateDisplay.text = $"{label}:{currentRate:F1}°C/hr";
+            rateDisplay.text = $"{label}:{currentRate:F2}°C/hr";
     }
 }

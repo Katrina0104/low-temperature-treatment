@@ -162,6 +162,7 @@ JumpTo::Event2
 [ALARM_OFF]
 [WAIT:7]可以在照顧患者時，觀看治療手冊![w]
 [ROLL_BP]
+[ALARM_OFF]
 [talk] 恭喜今日任務完成。 [w]
 
 
@@ -201,6 +202,7 @@ JumpTo::Event5
 [ALARM_OFF]
 [WAIT:7]可以在照顧患者時，觀看治療手冊![w]
 [ROLL_EQUIP]
+[ALARM_OFF]
 [talk] 恭喜今日任務完成。 [w]
 
 
@@ -214,14 +216,16 @@ JumpTo::Event5
 [talk]來測量今日患者體溫[w]
 [talk]患者目前鼓膜溫度為 36.5°C[w]
 ::Event7
-[CHOICE:::Event7_Yes,::Event7_No] 請問是否正常?
+請問是否正常?
+[CHOICE:::Event7_Yes,::Event7_No] 
 ::Event7_No
 [talk] 鼓膜溫度36.5℃至37.8皆為正常 [w]
 JumpTo::Event7
 ::Event7_Yes
 "請完成每日例行行程"[lr]
 ::Event8
-[CHOICE:::Event8_Yes,::Event8_No] 需要塗抹乳液嗎?
+需要塗抹乳液嗎?
+[CHOICE:::Event8_Yes,::Event8_No]
 ::Event8_Yes
 [talk] 是的!特別是使用外部冷卻貼片時，由於表面微血管血流減少，病患皮膚破損的風險增加。需要頻繁評估貼片下的皮膚，保護骨突處，並使用適當的乳液，定期翻身以降低風險。 [lr]
 JumpTo::Event9
@@ -237,6 +241,7 @@ JumpTo::Event8
 [ALARM_OFF]
 [WAIT:6]可以在照顧患者時，觀看治療手冊![lr]
 [ROLL_EQUIP]
+[ALARM_OFF]
 [talk] 恭喜今日任務完成。 [lr]
 
 

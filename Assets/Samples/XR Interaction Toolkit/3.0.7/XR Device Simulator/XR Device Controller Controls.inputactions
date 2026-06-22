@@ -324,7 +324,7 @@
                 },
                 {
                     "name": "",
-                    "id": "88b9b4e3-467e-4dd6-bbaf-5dde7c2a3ba0",
+                    "id": "23b66126-3456-413e-9362-243cb6de4057",
                     "path": "<XRController>{RightHand}/{PrimaryButton}",
                     "interactions": "",
                     "processors": "",
@@ -346,7 +346,7 @@
                 },
                 {
                     "name": "",
-                    "id": "54784260-5d8d-4d53-9045-bdab94416c36",
+                    "id": "0b40c13d-4e9f-4be2-ab0b-5d3a290f7604",
                     "path": "<XRController>{RightHand}/{SecondaryButton}",
                     "interactions": "",
                     "processors": "",

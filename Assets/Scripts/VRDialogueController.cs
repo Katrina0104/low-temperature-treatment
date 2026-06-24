@@ -32,6 +32,7 @@ public class VRDialogueController : MonoBehaviour
     private string noTarget;
     private Coroutine movementCoroutine;
     private Coroutine waitCoroutine;
+    private bool isUIButtonPressed = false;
 
     [Header("外部系統連結")]
     public EventManager eventManager;
@@ -117,6 +118,11 @@ public class VRDialogueController : MonoBehaviour
         isButtonAvailable = true;
     }
 
+    public void OnUIButtonPressed()
+    {
+        isUIButtonPressed = true;
+    }
+
     public void OnNextStep()
     {
         Debug.Log($"OnNextStep called, currentIndex: {currentIndex}");
@@ -153,7 +159,9 @@ public class VRDialogueController : MonoBehaviour
                line.StartsWith("[ENDIF]") ||
                line.StartsWith("JumpTo::") ||
                line.StartsWith("[ROLL") ||
-               line.StartsWith("[INC_DAY]");
+               line.StartsWith("[INC_DAY]") ||
+               line.StartsWith("[IF:BUTTON_PRESSED") ||
+               line.StartsWith("[END]");
     }
 
     // 將邏輯拆分，避免直接遞迴 OnNextStep 導致 StackOverflow
@@ -251,6 +259,24 @@ public class VRDialogueController : MonoBehaviour
             }
         }
 
+        if (line.StartsWith("[IF:BUTTON_PRESSED"))
+        {
+            if (!isUIButtonPressed)
+            {
+                Debug.Log("<color=orange>[BUTTON CHECK]</color> 未按下");
+                SkipToTarget("[ELSE]", "[ENDIF]");
+                OnNextStep();
+                return;
+            }
+            else
+            {
+                isUIButtonPressed = false; // 重置
+                Debug.Log("<color=green>[BUTTON CHECK]</color> 已按下，通過！");
+                OnNextStep();
+                return;
+            }
+        }
+
         //4. Event
         // --- 在 ProcessCurrentLine() 內部對應位置加入 ---
 
@@ -340,6 +366,26 @@ public class VRDialogueController : MonoBehaviour
                 OnNextStep();
                 return;
             }
+        }
+
+        if (line.StartsWith("[END]"))
+        {
+            Debug.Log("<color=red>[END]</color> 對話結束，停止所有流程");
+            StopAllCoroutines();
+
+            if (waitCoroutine != null) waitCoroutine = null;
+            if (movementCoroutine != null) movementCoroutine = null;
+
+            isWaitingForChoice = false;
+            isCountingDown = false;
+            isButtonAvailable = true;
+
+            ResetDialogueUI();
+
+            if (nextLineAction.action != null) nextLineAction.action.Disable();
+            if (prevLineAction.action != null) prevLineAction.action.Disable();
+
+            return;
         }
 
         // 5. 顯示台詞內容

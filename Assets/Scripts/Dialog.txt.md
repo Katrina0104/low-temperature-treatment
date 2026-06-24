@@ -249,16 +249,44 @@ JumpTo::Event8
 ::End
 [talk]你表現的很棒！現在療程結束需要移除輸水管，首先停止機器的治療程序[w]
 [talk]按下螢幕上的stop按鈕就可以了[lr]
+::Check_Button_stop
+[IF:BUTTON_PRESSED:stop]
+    [talk] 按鈕已確認按下，請繼續！ [w]
+    [talk] 再來把傳遞墊排空，按下螢幕上的排空貼片按鈕就可以了 [w]
+    JumpTo::Check_Button_empty
+[ELSE]
+    請按下螢幕上的按鈕繼續 [w]
+    JumpTo::Check_Button_stop
+::Check_Button_empty
+[IF:BUTTON_PRESSED:EmptyButton]
+    [talk] 按鈕已確認按下，請繼續！ [w]
+    JumpTo::Continue
+[ELSE]
+    [WAIT:3] 請按下螢幕上的按鈕繼續 [w]
+    JumpTo::Check_Button_empty
+::Continue
+[talk]接著我們斷開體溫探頭和食道溫探頭[lr]
+[talk]然後要把輸水管從跟機器連接的端頭移除，首先抓住連接處的翼狀結構 (wings)[lr]
+[talk]然後捏住 (pinch)，推入 (push)，接著再拉出 (pull) 以移除凝膠貼片」，記得需要對所有連接的貼片重複這個過程。[lr]
+[talk]請按下牆上的按鈕[w]
+::Check_pipeline_end
+[IF:IS_ACTIVE:機器端書水管路]
+        JumpTo::Remove_patch
+[ELSE]
+        [WAIT:3]牆壁上的按鈕為切斷輸水管的連接方式，請按下進行檢查[w]
+        JumpTo::Check_pipeline_end
 
-[talk]再來把傳遞墊排空，按下螢幕上的排空貼片按鈕就可以了[w]
+::Remove_patch
+[talk]最後移除患者身上的貼片就完成了![w]
+[CHOICE:::Remove_YES,::Remove_No]
+::Remove_YES
+[talk]恭喜完成![lr]
+[talk]你已經成長為一個優秀的護士了，恭喜你![w]
+[END]
+::Remove_No
+請再確認一次[lr]
+JumpTo::Remove_patch
 
-[talk]接著斷開體溫探頭和食道溫探頭[w]
-
-[talk]然後要把輸水管從跟機器連接的端頭移除，首先抓住連接處的翼狀結構 (wings)[w]
-
-[talk]然後捏住 (pinch)，推入 (push)，接著再拉出 (pull) 以移除凝膠貼片」，記得需要對所有連接的貼片重複這個過程。[w]
-
-[talk]最後移除患者身上的貼片就完成了。完成了。要小心地移除避免撕裂患者的皮膚[w]
 
 
 
@@ -268,21 +296,34 @@ JumpTo::Event8
 ::EVENT_EQUIPMENT
 [talk] 【警告】偵測到貼片脫落或設備缺水，請檢查連線！ [lr]
 請先使用"empty pads" (清空貼片) 按鈕來清空貼片內的液體[w]
-現在請「斷開貼片與機器連接」[w]
+::Check_Empty
+[IF:BUTTON_PRESSED:EmptyButton]
+    現在請「斷開貼片與機器連接」[w]
+    JumpTo::Check_EQUIPMENT
+[ELSE]
+    [WAIT:3]請先按下螢幕上傳遞墊清空按鈕，清空貼片[w]
+    JumpTo::Check_Empty
+[ENDIF]
+
 ::Check_EQUIPMENT
 [IF:IS_ACTIVE:機器端書水管路]
-        [talk] 事件已解決 [w]
-        "如果機器顯示缺水，需要使用 "fill reservoir" (填充水箱) 功能補充無菌水" [w]
-        現在請「接回貼片與機器連接」[w]
-        ::Check_EQUIPMENT_back
-        [IF:IS_ACTIVE:右邊胸口貼片管路部分(1)]
-                [RETURN]
-        [ELSE]
-                [WAIT:3]牆壁上的按鈕為輸水管的連接方式，請按下繼續療程[w]
-                JumpTo::Check_EQUIPMENT_back
+    JumpTo::EQUIPMENT_Connected
 [ELSE]
-        [WAIT:3]牆壁上的按鈕為切斷輸水管的連接方式，請按下進行檢查[w]
-        JumpTo::Check_EQUIPMENT
+    [WAIT:3]牆壁上的按鈕為切斷輸水管的連接方式，請按下進行檢查[w]
+    JumpTo::Check_EQUIPMENT
+[ENDIF]
+
+::EQUIPMENT_Connected
+[talk] 事件已解決 [w]
+"如果機器顯示缺水，需要使用 fill reservoir 功能補充無菌水" [w]
+現在請「接回貼片與機器連接」[w]
+::Check_EQUIPMENT_back
+[IF:IS_ACTIVE:機器端書水管路(1)]
+    [RETURN]
+[ELSE]
+    [WAIT:3]牆壁上的按鈕為輸水管的連接方式，請按下繼續療程[w]
+    JumpTo::Check_EQUIPMENT_back
+[ENDIF]
 
 
 

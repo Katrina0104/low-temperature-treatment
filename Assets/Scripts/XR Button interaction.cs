@@ -24,10 +24,17 @@ public class XRButtonSink : XRSimpleInteractable
     [Header("Events")]
     public UnityEvent OnPressed;
     public UnityEvent OnReleased;
+    public bool IsPressed { get; private set; } = false;
+    public void ResetPressed()
+    {
+        IsPressed = false;
+    }
 
     private Vector3 _startPos;
     private bool _isAnimating = false;
     private Coroutine _currentCoroutine;
+
+
 
     protected override void Awake()
     {
@@ -71,6 +78,7 @@ public class XRButtonSink : XRSimpleInteractable
 
         // Sink down
         yield return StartCoroutine(MoveTo(sunkPos));
+        IsPressed = true;
         OnPressed.Invoke();
 
         // Brief hold

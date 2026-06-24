@@ -70899,7 +70899,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: b4f63defd4705e04f9ffbc3a9d6d4a62, type: 3}
       propertyPath: m_Name
-      value: "\u6A5F\u5668\u7AEF\u66F8\u6C34\u7BA1\u8DEF (1)"
+      value: "\u6A5F\u5668\u7AEF\u66F8\u6C34\u7BA1\u8DEF(1)"
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: b4f63defd4705e04f9ffbc3a9d6d4a62, type: 3}
       propertyPath: m_IsActive

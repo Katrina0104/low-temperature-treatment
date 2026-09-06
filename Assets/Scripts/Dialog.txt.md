@@ -10,7 +10,7 @@
 ::Check_Patient
 [CHOICE:::Patient_START,::Patient_WRONG]
 ::Patient_START
-確認為患者，接下來我們先觀察生命體徵[lr]
+確認為患者，接下來我們先觀察生命徵象[lr]
 JumpTo::BREATH_CHECK
 ::Patient_WRONG
 請再核對一次身份訊息[lr]
@@ -367,15 +367,15 @@ JumpTo::Check_MgSO4
     JumpTo::Temperature
 [ENDIF]
 ::Speed
-再將復溫速率選為0.25[w]
+再將復溫數量調慢不超過0.25℃/hr[w]
 記得調整正下方時間[w]
 "請儲存所有調整"[lr]
 ::Speed_Check
 [IF:TEXT_CHECK:reheat_rate:速率:0.25°C/hr]
-    [talk] 復溫速率已設置為 0.25，做得好。 [w]
+    [talk] 復溫速率已設置好，做得好。 [w]
     [RETURN]
 [ELSE]
-    [talk] 復溫速率還沒對喔，目前顯示的不是 0.25 [w]
+    [talk] 復溫速率還沒對喔，目前顯示的需不超過0.25℃/hr [w]
     JumpTo::Speed_Check
 [ENDIF]
 

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using TMPro;
 using System.Collections.Generic;
 using UnityEngine.InputSystem;
@@ -339,7 +339,8 @@ public class VRDialogueController : MonoBehaviour
         //5.調整溫度跟時間的textmesh
         if (line.StartsWith("[IF:TEXT_CHECK"))
         {
-            // 格式範例: [IF:TEXT_CHECK:TemperatureValueText:33度]
+            // 格式範例: [IF:TEXT_CHECK:Cooling_temperature:33]
+            //          [IF:TEXT_CHECK:reheat_rate:0.25]
             string targetObjectName = "";
             string expectedText = "";
 
@@ -347,7 +348,7 @@ public class VRDialogueController : MonoBehaviour
             if (parts.Length >= 4)
             {
                 targetObjectName = parts[2].Trim(); // 物件名稱
-                expectedText = parts[3].Trim();     // 想要看到的文字
+                expectedText = parts[3].Trim();     // 想要看到的文字/數值
             }
 
             // 呼叫自定義的檢查方法
@@ -355,7 +356,7 @@ public class VRDialogueController : MonoBehaviour
 
             if (!isMatch)
             {
-                Debug.Log($"<color=orange>[檢查失敗]</color> 物件 '{targetObjectName}' 文字不含 '{expectedText}'，跳往 [ELSE]");
+                Debug.Log($"<color=orange>[檢查失敗]</color> 物件 '{targetObjectName}' 檢查不符 '{expectedText}'，跳往 [ELSE]");
                 SkipToTarget("[ELSE]", "[ENDIF]");
                 OnNextStep();
                 return;
@@ -592,6 +593,9 @@ public class VRDialogueController : MonoBehaviour
         if (npcAnimator != null) npcAnimator.SetTrigger("idle");
     }
 
+    /// <summary>
+    /// 增強版本的文字檢查方法，支援數值範圍驗證
+    /// </summary>
     private bool CheckSpecificText(string objectName, string targetText)
     {
         GameObject targetGO = null;
@@ -614,19 +618,89 @@ public class VRDialogueController : MonoBehaviour
             if (tmp != null)
             {
                 string currentText = tmp.text.Trim();
-                // 使用 Contains 比較安全，避免空格或隱藏字元干擾
-                return currentText.Contains(targetText);
+                
+                Debug.Log($"<color=cyan>[文字檢查]</color> 物件: '{objectName}' | 當前文字: '{currentText}' | 期望值: '{targetText}'");
+
+                // ===== 數值檢查邏輯 =====
+                // 嘗試從當前文字提取數值
+                if (TryExtractNumericValue(currentText, out float currentValue))
+                {
+                    // 嘗試解析期望值為數值
+                    if (float.TryParse(targetText, out float maxAllowed))
+                    {
+                        // 比較：當前值是否不超過期望值
+                        if (currentValue <= maxAllowed + 0.01f) // +0.01f 給小數精度誤差容許
+                        {
+                            Debug.Log($"<color=green>[✓ 通過]</color> 數值檢查: {currentValue} ≤ {maxAllowed}");
+                            return true;
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"<color=red>[✗ 失敗]</color> 數值超出範圍: {currentValue} > {maxAllowed}");
+                            return false;
+                        }
+                    }
+                }
+
+                // ===== 字符串精確檢查 =====
+                // 如果不是數值比較，使用字符串包含檢查
+                if (currentText.Contains(targetText))
+                {
+                    Debug.Log($"<color=green>[✓ 通過]</color> 文字包含檢查通過");
+                    return true;
+                }
+                else
+                {
+                    Debug.LogWarning($"<color=red>[✗ 失敗]</color> 文字不包含期望內容");
+                    return false;
+                }
             }
             else
             {
                 Debug.LogWarning($"<color=red>[錯誤]</color> 物件 '{objectName}' 沒有 TextMeshProUGUI 組件！");
+                return false;
             }
         }
         else
         {
             Debug.LogWarning($"<color=red>[錯誤]</color> 找不到名為 '{objectName}' 的文字物件！");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 從文字中提取第一個數值
+    /// 例如："33" → 33, "33.5°C" → 33.5, "0.25°C/hr" → 0.25
+    /// </summary>
+    private bool TryExtractNumericValue(string text, out float value)
+    {
+        value = 0f;
+        
+        if (string.IsNullOrEmpty(text))
+            return false;
+
+        // 移除特殊字元，只保留數字和小數點
+        string cleaned = "";
+        bool hasDecimalPoint = false;
+
+        foreach (char c in text)
+        {
+            if (char.IsDigit(c))
+            {
+                cleaned += c;
+            }
+            else if (c == '.' && !hasDecimalPoint)
+            {
+                cleaned += c;
+                hasDecimalPoint = true;
+            }
+            else if (c == '-' && cleaned.Length == 0) // 只在開頭允許負號
+            {
+                cleaned += c;
+            }
         }
 
-        return false;
+        // 嘗試解析為浮點數
+        return float.TryParse(cleaned, out value);
     }
 }

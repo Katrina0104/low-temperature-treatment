@@ -7,8 +7,15 @@ public class StepStat
     public string stepName;
     public int correctCount;
     public int wrongCount;
-    public List<float> intervals = new List<float>(); // 秒
+    public List<float> intervals = new List<float>(); // 秒（已扣除看提示的時間）
+    public int hintCount;                             // 此步驟按提示的次數
     public float FamiliarityIndex => ComputeFamiliarity();
+
+    /// <summary>此步驟累計的總停留秒數。</summary>
+    public float TotalSeconds
+    {
+        get { float s = 0f; foreach (var t in intervals) s += t; return s; }
+    }
 
     private float ComputeFamiliarity()
     {
@@ -16,11 +23,18 @@ public class StepStat
         float mean = 0f;
         foreach (var t in intervals) mean += t;
         mean /= intervals.Count;
-        // 越接近 baseline 時間，熟悉度越高；可依你的 baseline 調整公式
-        return Mathf.Clamp01(1f - Mathf.Abs(mean - baselineSeconds) / baselineSeconds);
+
+        // 單邊衰減：比 baseline 快 → 1.0（操作熟練不該被懲罰）；
+        // 比 baseline 慢 → 隨倍數衰減，用來偵測認知遲滯。
+        float timeScore = Mathf.Clamp01(baselineSeconds / Mathf.Max(mean, baselineSeconds));
+
+        // 提示是明確的評量項目：需要看提示代表對該步驟不熟。
+        // 看提示的時間本身不計入 intervals，所以這裡不會重複扣兩次。
+        return Mathf.Clamp01(timeScore - hintCount * hintPenalty);
     }
 
     public float baselineSeconds = 5f; // 之後用多次測試跑出的平均值填入
+    public float hintPenalty = 0.15f;  // 每按一次提示扣掉的熟悉度
 }
 
 public class LearningAnalyticsManager : MonoBehaviour
@@ -33,13 +47,22 @@ public class LearningAnalyticsManager : MonoBehaviour
 
     private Dictionary<string, StepStat> stats = new Dictionary<string, StepStat>();
 
-    public float errorThreshold = 0.1f;
+    // 矩陣只用四個機率階：1.0 唯一正確／0.9 正確選項／0.5 隨機事件分支／0.1 錯誤。
+    // 門檻必須落在 0.1 與 0.5 之間，否則 prob < errorThreshold 對 0.1 不成立，
+    // 所有錯誤路徑都會被誤判為正確。
+    public float errorThreshold = 0.2f;
 
     private string currentState;
     private float stateEnterTime;
+    private float pausedInCurrentState;   // 目前步驟中，花在看提示的秒數
 
-    void Awake() => Instance = this;
-        void Start()
+    void Awake()
+    {
+        Instance = this;
+        BuildTransitionMatrix();   // 建在 Awake，避免與 AIController 的初始化順序衝突
+    }
+
+    private void BuildTransitionMatrix()
     {
         // ===== START → 病患核對 =====
         RegisterTransition("::START", "::Check_Patient", 1.0f);
@@ -78,6 +101,20 @@ public class LearningAnalyticsManager : MonoBehaviour
         RegisterTransition("::Note8", "::Note9", 1.0f);
         RegisterTransition("::Note9", "::Note10", 1.0f);
         RegisterTransition("::Note10", "::Day_1", 1.0f);
+
+        // ===== 測驗模式：療程注意事項回憶題（Practice.txt.md 專用分支）=====
+        RegisterTransition("::Note5", "::Note5_Yes", 0.9f);   RegisterTransition("::Note5", "::Note5_No", 0.1f);
+        RegisterTransition("::Note5_No", "::Note5", 0.1f);    RegisterTransition("::Note5_Yes", "::Note6", 0.9f);
+        RegisterTransition("::Note6", "::Note6_Yes", 0.9f);   RegisterTransition("::Note6", "::Note6_No", 0.1f);
+        RegisterTransition("::Note6_No", "::Note6", 0.1f);    RegisterTransition("::Note6_Yes", "::Note7", 0.9f);
+        RegisterTransition("::Note7", "::Note7_No", 0.9f);    RegisterTransition("::Note7", "::Note7_Yes", 0.1f);
+        RegisterTransition("::Note7_Yes", "::Note7", 0.1f);   RegisterTransition("::Note7_No", "::Note8", 0.9f);
+        RegisterTransition("::Note8", "::Note8_No", 0.9f);    RegisterTransition("::Note8", "::Note8_Yes", 0.1f);
+        RegisterTransition("::Note8_Yes", "::Note8", 0.1f);   RegisterTransition("::Note8_No", "::Note9", 0.9f);
+        RegisterTransition("::Note9", "::Note9_Yes", 0.9f);   RegisterTransition("::Note9", "::Note9_No", 0.1f);
+        RegisterTransition("::Note9_No", "::Note9", 0.1f);    RegisterTransition("::Note9_Yes", "::Note10", 0.9f);
+        RegisterTransition("::Note10", "::Note10_Yes", 0.9f); RegisterTransition("::Note10", "::Note10_No", 0.1f);
+        RegisterTransition("::Note10_No", "::Note10", 0.1f);  RegisterTransition("::Note10_Yes", "::Day_1", 0.9f);
 
         // ===== Day 1 =====
         RegisterTransition("::Day_1", "::Event1", 1.0f);
@@ -184,12 +221,13 @@ public class LearningAnalyticsManager : MonoBehaviour
 
     public void EnterState(string stateName)
     {
-        // 先結算上一個狀態的停留時間
+        // 先結算上一個狀態的停留時間（扣掉看提示的那段）
         if (!string.IsNullOrEmpty(currentState))
         {
-            float dt = Time.time - stateEnterTime;
+            float dt = Mathf.Max(0f, Time.time - stateEnterTime - pausedInCurrentState);
             GetOrCreateStat(currentState).intervals.Add(dt);
         }
+        pausedInCurrentState = 0f;
 
         currentState = stateName;
         stateEnterTime = Time.time;
@@ -225,6 +263,64 @@ public class LearningAnalyticsManager : MonoBehaviour
     {
         if (!stats.ContainsKey(name)) stats[name] = new StepStat { stepName = name };
         return stats[name];
+    }
+
+    /// <summary>重玩時清空統計，保留轉移矩陣。</summary>
+    public void ResetSession()
+    {
+        stats.Clear();
+        currentState = null;
+        stateEnterTime = 0f;
+        pausedInCurrentState = 0f;
+    }
+
+    /// <summary>結算目前狀態的停留時間（產報告前呼叫）。</summary>
+    public void FlushCurrentState()
+    {
+        if (!string.IsNullOrEmpty(currentState))
+        {
+            float dt = Mathf.Max(0f, Time.time - stateEnterTime - pausedInCurrentState);
+            GetOrCreateStat(currentState).intervals.Add(dt);
+            stateEnterTime = Time.time;
+            pausedInCurrentState = 0f;
+        }
+    }
+
+    /// <summary>
+    /// 把看提示的那段時間從目前步驟的停留時間裡扣掉。
+    /// 熟悉度改由 hintCount 明確扣分，時間不重複計算。
+    /// </summary>
+    public void AddPausedTime(float seconds)
+    {
+        if (seconds > 0f) pausedInCurrentState += seconds;
+    }
+
+    /// <summary>記錄某步驟被按了一次提示，回傳該步驟累計的提示次數。</summary>
+    public int RecordHint(string state)
+    {
+        if (string.IsNullOrEmpty(state)) return 0;
+        var st = GetOrCreateStat(state);
+        st.hintCount++;
+        return st.hintCount;
+    }
+
+    /// <summary>只查詢轉移是否合法，不寫入統計（復習模式用，避免污染評鑑數據）。</summary>
+    public bool PeekTransition(string from, string to)
+    {
+        float prob = 0f;
+        if (transitionMatrix.ContainsKey(from) && transitionMatrix[from].ContainsKey(to))
+            prob = transitionMatrix[from][to];
+        return prob >= errorThreshold;
+    }
+
+    /// <summary>取出機率最高的下一步，用於即時導引。</summary>
+    public string GetMostLikelyNext(string state)
+    {
+        if (string.IsNullOrEmpty(state) || !transitionMatrix.ContainsKey(state)) return "";
+        string best = ""; float bestP = -1f;
+        foreach (var kv in transitionMatrix[state])
+            if (kv.Value > bestP) { bestP = kv.Value; best = kv.Key; }
+        return best;
     }
 
     // 課程結束時輸出熱圖資料

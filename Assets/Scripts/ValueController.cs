@@ -3,13 +3,13 @@ using TMPro;
 
 public class ValueController : MonoBehaviour
 {
-    [Header("UI ¤Ş¥Î")]
-    public TextMeshProUGUI valueDisplay; // ©ì¤J³o²Õ¹ïÀ³ªº¤å¦r
-    public TextMeshProUGUI nameDisplay;  // ©ì¤J³o²Õ¹ïÀ³ªº¤å¦r¡]Åã¥Ü¦WºÙ¡^
+    [Header("UI å¼•ç”¨")]
+    public TextMeshProUGUI valueDisplay; // æ‹–å…¥é€™çµ„å°æ‡‰çš„æ–‡å­—
+    public TextMeshProUGUI nameDisplay;  // æ‹–å…¥é€™çµ„å°æ‡‰çš„æ–‡å­—ï¼ˆé¡¯ç¤ºåç¨±ï¼‰
 
-    [Header("³]©w")]
-    public string valueName = "¼Æ­È";      // µ¹³o²Õ¼Æ­È¤@­Ó¦W¦r
-    public int startValue = 36;           // ªì©l­È
+    [Header("è¨­å®š")]
+    public string valueName = "æ•¸å€¼";      // çµ¦é€™çµ„æ•¸å€¼ä¸€å€‹åå­—
+    public int startValue = 36;           // åˆå§‹å€¼
 
     private int currentValue;
 
@@ -23,31 +23,41 @@ public class ValueController : MonoBehaviour
         UpdateDisplay();
     }
 
-    // ¼W¥[¼Æ­È¡]¥i¥H¦b Inspector ªº«ö¶s¨Æ¥ó±a¤J°Ñ¼Æ¡A¨Ò¦p¶ñ 1 ©Î 10¡^
+    /// <summary>
+    /// å›åˆ° Inspector ä¸Šè¨­å®šçš„ startValueã€‚
+    /// è¡€å£“ä¸ç©©äº‹ä»¶æ¯æ¬¡è§¸ç™¼å‰å‘¼å«ï¼Œè®“å¾©æº«æº«åº¦æ¯ä¸€å¤©éƒ½è¦é‡æ–°è¨­å®šã€‚
+    /// </summary>
+    public void ResetValue()
+    {
+        currentValue = startValue;
+        UpdateDisplay();
+    }
+
+    // å¢åŠ æ•¸å€¼ï¼ˆå¯ä»¥åœ¨ Inspector çš„æŒ‰éˆ•äº‹ä»¶å¸¶å…¥åƒæ•¸ï¼Œä¾‹å¦‚å¡« 1 æˆ– 10ï¼‰
     public void AddValue(int amount)
     {
         currentValue += amount;
         UpdateDisplay();
     }
 
-    // ´î¤Ö¼Æ­È
+    // æ¸›å°‘æ•¸å€¼
     public void SubtractValue(int amount)
     {
         currentValue -= amount;
         UpdateDisplay();
     }
 
-    // --- ³o¬O§A­n¨Dªº¡G³æ¿W³B²zÅã¥Üªº¨ç¦¡ ---
+    // --- é€™æ˜¯ä½ è¦æ±‚çš„ï¼šå–®ç¨è™•ç†é¡¯ç¤ºçš„å‡½å¼ ---
     public void UpdateDisplay()
     {
         if (valueDisplay != null)
         {
             valueDisplay.text = $"{valueName}{currentValue}";
-            nameDisplay.text = $"{valueName}{currentValue}"; // ¦pªG§A·Q­n¦b¥t¤@­Ó Text Åã¥Ü¦WºÙ
+            nameDisplay.text = $"{valueName}{currentValue}"; // å¦‚æœä½ æƒ³è¦åœ¨å¦ä¸€å€‹ Text é¡¯ç¤ºåç¨±
         }
     }
 
-    // ´£¨Ñµ¹¥~³¡¸}¥»Åª¨ú¼Æ­Èªº¤èªk
+    // æä¾›çµ¦å¤–éƒ¨è…³æœ¬è®€å–æ•¸å€¼çš„æ–¹æ³•
     public int GetCurrentValue()
     {
         return currentValue;

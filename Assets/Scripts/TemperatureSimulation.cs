@@ -3,36 +3,49 @@ using TMPro;
 
 public class TemperatureSimulation : MonoBehaviour
 {
-    [Header("UI ¤Ş¥Î")]
+    [Header("UI å¼•ç”¨")]
     public TextMeshProUGUI currentTempDisplay;
     public TextMeshProUGUI statusDisplay;
-    public TextMeshProUGUI coolingSettingText; // ©ì¤JÅã¥Ü 33.0 ªº¨º­Ó¤å¦r
-    public TextMeshProUGUI rewarmingSettingText; // ©ì¤JÅã¥Ü 36.5 ªº¨º­Ó¤å¦r
+    public TextMeshProUGUI coolingSettingText; // æ‹–å…¥é¡¯ç¤º 33.0 çš„é‚£å€‹æ–‡å­—
+    public TextMeshProUGUI rewarmingSettingText; // æ‹–å…¥é¡¯ç¤º 36.5 çš„é‚£å€‹æ–‡å­—
     public RectTransform graphArea;
     public RectTransform timeIndicator;
 
-    [Header("¹Ïªí¤Ş¥Î")]
+    [Header("åœ–è¡¨å¼•ç”¨")]
     public RealTimeGraph patientTempGraph;
 
-    //[Header("¼Æ­È¨Ó·½")]
+    //[Header("æ•¸å€¼ä¾†æº")]
     //public TimeValueController coolingTimer;
     //public TimeValueController rewarmingTimer;
 
-    [Header("®É¶¡»P¬y³t")]
+    [Header("æ™‚é–“èˆ‡æµé€Ÿ")]
     public float timeMultiplier = 10f;
     public float totalGraphTimeMinutes = 720f;
 
-    [Header("³t²v¨Ó·½")]
-    public RateValueController coolingRateCtrl;   // ©ì¤J­°·Å³t²v±±¨î¾¹
-    public RateValueController rewarmingRateCtrl; // ©ì¤J¤É·Å³t²v±±¨î¾¹
+    [Tooltip("æ•´å¼µåœ–è¦åœ¨å¹¾ç§’å¯¦éš›æ™‚é–“å…§è·‘å®Œã€‚å¤§æ–¼ 0 æ™‚æœƒè“‹é timeMultiplierï¼›è¨­ 0 å‰‡æ²¿ç”¨ timeMultiplier")]
+    public float graphDurationSeconds = 0f;
 
-    [Header("Åã¥Ü´«ºâ«áªº¹w­p®Éªø")]
-    public TextMeshProUGUI coolingDurationDisplay;   // Åã¥Ü¡u¹w­p­°·Å®É¶¡¡v
-    public TextMeshProUGUI coolingDurationDisplay1;   // Åã¥Ü¡u¹w­p­°·Å®É¶¡¡v
-    public TextMeshProUGUI rewarmingDurationDisplay; // Åã¥Ü¡u¹w­p¤É·Å®É¶¡¡v
-    public TextMeshProUGUI rewarmingDurationDisplay1; // Åã¥Ü¡u¹w­p¤É·Å®É¶¡¡v
+    /// <summary>
+    /// å¯¦éš›æ¡ç”¨çš„åŠ é€Ÿå€ç‡ã€‚
+    /// è¨­äº† graphDurationSeconds å°±ä¾ã€Œæ•´å¼µåœ–çš„æ¨¡æ“¬åˆ†é˜æ•¸ / æƒ³èŠ±çš„ç§’æ•¸ã€æ›ç®—ï¼Œ
+    /// ä¸ç”¨è‡ªå·±ç®— timeMultiplier è¦å¡«å¤šå°‘ã€‚
+    /// </summary>
+    private float EffectiveMultiplier =>
+        graphDurationSeconds > 0f
+            ? (totalGraphTimeMinutes * 60f) / graphDurationSeconds
+            : timeMultiplier;
 
-    [Header("·Å«×³]©w")]
+    [Header("é€Ÿç‡ä¾†æº")]
+    public RateValueController coolingRateCtrl;   // æ‹–å…¥é™æº«é€Ÿç‡æ§åˆ¶å™¨
+    public RateValueController rewarmingRateCtrl; // æ‹–å…¥å‡æº«é€Ÿç‡æ§åˆ¶å™¨
+
+    [Header("é¡¯ç¤ºæ›ç®—å¾Œçš„é è¨ˆæ™‚é•·")]
+    public TextMeshProUGUI coolingDurationDisplay;   // é¡¯ç¤ºã€Œé è¨ˆé™æº«æ™‚é–“ã€
+    public TextMeshProUGUI coolingDurationDisplay1;   // é¡¯ç¤ºã€Œé è¨ˆé™æº«æ™‚é–“ã€
+    public TextMeshProUGUI rewarmingDurationDisplay; // é¡¯ç¤ºã€Œé è¨ˆå‡æº«æ™‚é–“ã€
+    public TextMeshProUGUI rewarmingDurationDisplay1; // é¡¯ç¤ºã€Œé è¨ˆå‡æº«æ™‚é–“ã€
+
+    [Header("æº«åº¦è¨­å®š")]
     public float initialTemp = 37.0f;
     public float targetCoolTemp = 33.0f;
     public float targetRewarmTemp = 36.5f;
@@ -55,12 +68,12 @@ public class TemperatureSimulation : MonoBehaviour
 
     void Update()
     {
-        UpdateEstimatedTimeUI(); // Åıª±®a½Õ¾ã³t²v®É¡A®É¶¡¸òµÛ¸õ°Ê
+        UpdateEstimatedTimeUI(); // è®“ç©å®¶èª¿æ•´é€Ÿç‡æ™‚ï¼Œæ™‚é–“è·Ÿè‘—è·³å‹•
 
         if (!isRunning || isPaused) return;
 
-        // 2. ­pºâ¦¹´V¸g¹Lªº¼ÒÀÀ®É¶¡
-        float speedUpDeltaTime = Time.deltaTime * timeMultiplier;
+        // 2. è¨ˆç®—æ­¤å¹€ç¶“éçš„æ¨¡æ“¬æ™‚é–“
+        float speedUpDeltaTime = Time.deltaTime * EffectiveMultiplier;
         sessionTotalSimulatedSeconds += speedUpDeltaTime;
         float currentSimMinutes = sessionTotalSimulatedSeconds / 60f;
 
@@ -72,7 +85,7 @@ public class TemperatureSimulation : MonoBehaviour
             lastRecordTime = currentSimMinutes;
         }
 
-        // 5. °õ¦æ·Å«×¼ÒÀÀ
+        // 5. åŸ·è¡Œæº«åº¦æ¨¡æ“¬
         /*if (currentState == State.Cooling)
         {
             SimulateTemperature(initialTemp, targetCoolTemp, GetCalculatedCoolingMinutes(), State.Rewarming, speedUpDeltaTime);
@@ -82,16 +95,16 @@ public class TemperatureSimulation : MonoBehaviour
             SimulateTemperature(targetCoolTemp, targetRewarmTemp, GetCalculatedRewarmingMinutes(), State.Finished, speedUpDeltaTime);
         }*/
 
-        //Åı¥Ø¼Ğ·Å«×¥i¥H°ÊºA½Õ¾ã
+        //è®“ç›®æ¨™æº«åº¦å¯ä»¥å‹•æ…‹èª¿æ•´
         if (currentState == State.Cooling)
         {
-            // ±N³t²v («×/¤p®É) Âà´«¬° («×/¬í)¡A¨Ã­¼¤W¥[³t®É¶¡
+            // å°‡é€Ÿç‡ (åº¦/å°æ™‚) è½‰æ›ç‚º (åº¦/ç§’)ï¼Œä¸¦ä¹˜ä¸ŠåŠ é€Ÿæ™‚é–“
             float maxDistanceDelta = (coolingRateCtrl.currentRate / 3600f) * speedUpDeltaTime;
 
-            // ±q¡u·í«e·Å«×¡v¥­·Æ²¾°Ê¨ì¡u¥Ø¼Ğ·Å«×¡v
+            // å¾ã€Œç•¶å‰æº«åº¦ã€å¹³æ»‘ç§»å‹•åˆ°ã€Œç›®æ¨™æº«åº¦ã€
             currentTemp = Mathf.MoveTowards(currentTemp, targetCoolTemp, maxDistanceDelta);
 
-            // ¦pªG¤w¸g¨ì¹F¥Ø¼Ğ·Å«×
+            // å¦‚æœå·²ç¶“åˆ°é”ç›®æ¨™æº«åº¦
             if (Mathf.Approximately(currentTemp, targetCoolTemp))
             {
                 TransitionTo(State.Rewarming);
@@ -110,11 +123,11 @@ public class TemperatureSimulation : MonoBehaviour
 
         UpdateUI();
     }
-    // --- ·s¼W¡G½Õ¾ã¥Ø¼Ğ·Å«×ªº¨ç¦¡ ---
+    // --- æ–°å¢ï¼šèª¿æ•´ç›®æ¨™æº«åº¦çš„å‡½å¼ ---
     public void AddCoolingTarget(float amount)
     {
         targetCoolTemp += amount;
-        UpdateUI(); // §Y®É§ó·s­±ªO¼Æ¦r
+        UpdateUI(); // å³æ™‚æ›´æ–°é¢æ¿æ•¸å­—
     }
 
     public void AddRewarmingTarget(float amount)
@@ -127,22 +140,22 @@ public class TemperatureSimulation : MonoBehaviour
     {
         if (timeIndicator == null || graphArea == null) return;
 
-        // 1. ­pºâ¶i«× (0.0 ~ 1.0)
+        // 1. è¨ˆç®—é€²åº¦ (0.0 ~ 1.0)
         float totalMins = totalGraphTimeMinutes > 0 ? totalGraphTimeMinutes : 720f;
         float progress = Mathf.Clamp01(currentSimMinutes / totalMins);
 
-        // 2. Àò¨ú¹Ïªí®ØªºÁ`¼e«×
+        // 2. ç²å–åœ–è¡¨æ¡†çš„ç¸½å¯¬åº¦
         float graphWidth = graphArea.rect.width;
 
-        // 3. ª½±µ­pºâ X °¾²¾¶q
-        // ¦]¬° scan_line ªºÁãÂI¤w¸g³]¦b¥ªÃä¡A©Ò¥H 0 ´N¬O°_ÂI
-        float targetX = - progress * graphWidth;// ¥[­t¸¹¬O¬°¤FÅı½u±q¥ªÃä¶}©l¦V¥k²¾°Ê
+        // 3. ç›´æ¥è¨ˆç®— X åç§»é‡
+        // å› ç‚º scan_line çš„éŒ¨é»å·²ç¶“è¨­åœ¨å·¦é‚Šï¼Œæ‰€ä»¥ 0 å°±æ˜¯èµ·é»
+        float targetX = - progress * graphWidth;// åŠ è² è™Ÿæ˜¯ç‚ºäº†è®“ç·šå¾å·¦é‚Šé–‹å§‹å‘å³ç§»å‹•
 
-        // 4. ®M¥Î®y¼Ğ
+        // 4. å¥—ç”¨åº§æ¨™
         timeIndicator.anchoredPosition = new Vector2(targetX, timeIndicator.anchoredPosition.y);
 
-        // °£¿ù¤é»x¡G²{¦b§AÀ³¸Ó·|¬İ¨ì X ±q 0 ¼W¥[¨ì 100 (©Î§Aªº¼e«×)
-        Debug.Log($"±½´y½u¶i«×: {progress * 100:F2}%, X®y¼Ğ: {targetX:F2}");
+        // é™¤éŒ¯æ—¥èªŒï¼šç¾åœ¨ä½ æ‡‰è©²æœƒçœ‹åˆ° X å¾ 0 å¢åŠ åˆ° 100 (æˆ–ä½ çš„å¯¬åº¦)
+        Debug.Log($"æƒæç·šé€²åº¦: {progress * 100:F2}%, Xåº§æ¨™: {targetX:F2}");
     }
 
     void UpdateEstimatedTimeUI()
@@ -181,14 +194,14 @@ public class TemperatureSimulation : MonoBehaviour
         UpdateUI();
     }
 
-    // --- ·s¼W¡G¦Û°Ê­pºâ®Éªøªº¨ç¦¡ ---
+    // --- æ–°å¢ï¼šè‡ªå‹•è¨ˆç®—æ™‚é•·çš„å‡½å¼ ---
     public float GetCalculatedCoolingMinutes()
     {
         if (coolingRateCtrl == null) return 0;
 
         if (currentState == State.Rewarming || currentState == State.Finished)
             return 0f;
-        // °ÊºA³Ñ¾l®É¶¡¡G¥H¡u·í«e·Å«×¡v»P¡u¥Ø¼Ğ¡vªº®t¶Z¨Ó­pºâ
+        // å‹•æ…‹å‰©é¤˜æ™‚é–“ï¼šä»¥ã€Œç•¶å‰æº«åº¦ã€èˆ‡ã€Œç›®æ¨™ã€çš„å·®è·ä¾†è¨ˆç®—
         float startPoint = (currentState == State.Idle) ? initialTemp : currentTemp;
         float tempDiff = Mathf.Abs(startPoint - targetCoolTemp);
         float rate = coolingRateCtrl.currentRate;
@@ -219,7 +232,7 @@ public class TemperatureSimulation : MonoBehaviour
 
     public void StartSimulation()
     {
-        // ¥u¦³¦b Idle ª¬ºA¤U«ö Start ¤~·|­«¸m¹Ïªí
+        // åªæœ‰åœ¨ Idle ç‹€æ…‹ä¸‹æŒ‰ Start æ‰æœƒé‡ç½®åœ–è¡¨
         if (currentState == State.Idle || currentState == State.Finished)
         {
             currentTemp = initialTemp;
@@ -229,7 +242,7 @@ public class TemperatureSimulation : MonoBehaviour
             currentState = State.Cooling;
         }
 
-        // ¦pªG¬O¼È°±ª¬ºA¡A´N¥u¬O³æ¯Â«ì´_¹B¦æ
+        // å¦‚æœæ˜¯æš«åœç‹€æ…‹ï¼Œå°±åªæ˜¯å–®ç´”æ¢å¾©é‹è¡Œ
         isRunning = true;
         isPaused = false;
     }
@@ -241,10 +254,10 @@ public class TemperatureSimulation : MonoBehaviour
 
     void UpdateUI()
     {
-        if (currentTempDisplay != null) currentTempDisplay.text = $"{currentTemp:F1} ¢XC";
+        if (currentTempDisplay != null) currentTempDisplay.text = $"{currentTemp:F1} Â°C";
         if (statusDisplay != null) statusDisplay.text = isPaused ? "PAUSED" : (isRunning ? currentState.ToString() : "READY");
 
-        // §ó·s³]©w¼Æ­È¤å¦r
+        // æ›´æ–°è¨­å®šæ•¸å€¼æ–‡å­—
         if (coolingSettingText != null) coolingSettingText.text = $"{targetCoolTemp:F1}";
         if (rewarmingSettingText != null) rewarmingSettingText.text = $"{targetRewarmTemp:F1}";
     }
